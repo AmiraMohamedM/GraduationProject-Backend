@@ -1,0 +1,557 @@
+{
+  
+    "info": {
+      "_postman_id": "a6dfe94f-deda-4ce4-af96-ef27a6b27e33",
+      "name": "New Collection",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+      "_exporter_id": "44604933",
+      "_collection_link": "https://go.postman.co/collection/44604933-a6dfe94f-deda-4ce4-af96-ef27a6b27e33?source=collection_link"
+    },
+    "item": [
+      {
+        "name": "Student",
+        "item": [
+          {
+            "name": "RegisterStudent",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\r\n  \"firstName\": \"string\",\r\n  \"lastName\": \"string\",\r\n  \"email\": \"strinag\",\r\n  \"password\": \"String1@\",\r\n  \"classLevel\": \"string\",\r\n  \"parentEmail\": \"string\",\r\n  \"languagePref\": \"string\",\r\n  \"deviceId\": \"string\"\r\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/auth/student/register",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "auth", "student", "register" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "LoginStudent",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\r\n  \"email\": \"strinag\",\r\n  \"password\": \"String1@\"\r\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/auth/student/login",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "auth", "student", "login" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "ForgetPassword",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\r\n  \"email\": \"strinag\"\r\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/auth/student/forgot-password",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "auth", "student", "forgot-password" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "resetPassword",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\r\n  \"email\": \"strinag\",\r\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJiYTQwODhmMy1kYzQ0LTQ4NzEtYTc0OC1iOTE5ZmM3NTllYzciLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6ImJhNDA4OGYzLWRjNDQtNDg3MS1hNzQ4LWI5MTlmYzc1OWVjNyIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InN0cmluYWciLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoic3RyaW5nIHN0cmluZyIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IlN0dWRlbnQiLCJleHAiOjE3NjgyMTE5NjAsImlzcyI6IllvdXJBcHBOYW1lIiwiYXVkIjoiWW91ckFwcENsaWVudCJ9.ZgM6-Wou4Koogf7N_eNsTQlFCTkDwT7PxaCjJCQd1W0\",\r\n  \"newPassword\": \"newPassword\"\r\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/auth/student/reset-password",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "auth", "student", "reset-password" ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Teacher",
+        "item": [
+          {
+            "name": "RegisterTeacher",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\r\n  \"email\": \"teacher5@test.com\",\r\n  \"password\": \"Teacher@123\",\r\n  \"firstname\": \"yasser\",\r\n  \"lastname\": \"Hassan\",\r\n  \"subject\": \"fff\",\r\n  \"bio\": \"ffff teacher\"\r\n}\r\n",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/auth/teacher/register",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "auth", "teacher", "register" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "LoginTeacher",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json",
+                  "type": "text"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\r\n    \"email\":\"teacher1@test.com\",\r\n    \"password\":\"Teacher@123\"\r\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/auth/teacher/login",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "auth", "teacher", "login" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "ForgetPassword",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\r\n  \"email\": \"string\"\r\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/auth/teacher/forget-password",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "auth", "teacher", "forget-password" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "resetPassword",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\r\n  \"email\": \"string\",\r\n  \"token\": \"string\",\r\n  \"newPassword\": \"string\"\r\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/auth/teacher/reset-password",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "auth", "teacher", "reset-password" ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Admin",
+        "item": [
+          {
+            "name": "AdminLogin",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJHLTgxNTM2MDIwIiwiaWF0IjoxNzIyODU5NTQyfQ.fFdCOJhR-QNkOyvgBtw_AeKR0OXh-c9wPZVV19waF-2OvNe9p_b9wy7flEinjXcKo2HHqE2NOG-JYcMzTJRoZQ",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\r\n  \"Email\": \"m314227@gmail.com\",\r\n  \"Password\": \"Admin@123\"\r\n}\r\n",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/admin/login",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "admin", "login" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "PendingTeacher",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTljM2ZhOS00MzJhLTdiMWQtYWJmNS1iOTVlNDc1YTM4ZjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAxOWMzZmE5LTQzMmEtN2IxZC1hYmY1LWI5NWU0NzVhMzhmMiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6Im0zMTQyMjdAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvbmFtZSI6IkdyYWR1YXRpb24gUHJvamVjdCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzcxMjAwMzY5LCJpc3MiOiJZb3VyQXBwTmFtZSIsImF1ZCI6IllvdXJBcHBDbGllbnQifQ.HvpkfRCXiloec3lbPRQlzXQil-kfjy9SJjZbidnyD3Y",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "http://localhost:5132/api/admin/pending-teachers",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "admin", "pending-teachers" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "ApproveTeacher",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTljM2ZhOS00MzJhLTdiMWQtYWJmNS1iOTVlNDc1YTM4ZjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAxOWMzZmE5LTQzMmEtN2IxZC1hYmY1LWI5NWU0NzVhMzhmMiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6Im0zMTQyMjdAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvbmFtZSI6IkdyYWR1YXRpb24gUHJvamVjdCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzcxMjAwMzY5LCJpc3MiOiJZb3VyQXBwTmFtZSIsImF1ZCI6IllvdXJBcHBDbGllbnQifQ.HvpkfRCXiloec3lbPRQlzXQil-kfjy9SJjZbidnyD3Y",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "PUT",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "{{vault:bearer-token}}",
+                  "type": "text"
+                }
+              ],
+              "url": {
+                "raw": "http://localhost:5132/api/admin/approve-teacher/3e08b1fb-309a-4e19-87f3-6eca3bafe700",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "admin", "approve-teacher", "3e08b1fb-309a-4e19-87f3-6eca3bafe700" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "AllTeacher",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTljM2ZhOS00MzJhLTdiMWQtYWJmNS1iOTVlNDc1YTM4ZjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAxOWMzZmE5LTQzMmEtN2IxZC1hYmY1LWI5NWU0NzVhMzhmMiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6Im0zMTQyMjdAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvbmFtZSI6IkdyYWR1YXRpb24gUHJvamVjdCIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6IkFkbWluIiwiZXhwIjoxNzcxMjAwMzY5LCJpc3MiOiJZb3VyQXBwTmFtZSIsImF1ZCI6IllvdXJBcHBDbGllbnQifQ.HvpkfRCXiloec3lbPRQlzXQil-kfjy9SJjZbidnyD3Y",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "http://localhost:5132/api/admin/all-teachers",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "admin", "all-teachers" ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "DeleteTeacher",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTljM2ZhOS00MzJhLTdiMWQtYWJmNS1iOTVlNDc1YTM4ZjIiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjAxOWMzZmE5LTQzMmEtN2IxZC1hYmY1LWI5NWU0NzVhMzhmMiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL2VtYWlsYWRkcmVzcyI6Im0zMTQyMjdAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGV7...}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "DELETE",
+              "header": [],
+              "url": {
+                "raw": "http://localhost:5132/api/admin/delete-teacher/3e08b1fb-309a-4e19-87f3-6eca3bafe700",
+                "protocol": "http",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "admin", "delete-teacher", "3e08b1fb-309a-4e19-87f3-6eca3bafe700" ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Auth",
+        "item": [
+          {
+            "name": "New Request",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": ""
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "GetHomePage",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....",
+              "type": "text"
+            }
+          ],
+          "url": {
+            "raw": "http://localhost:5132/api/home",
+            "protocol": "http",
+            "host": [ "localhost" ],
+            "port": "5132",
+            "path": [ "api", "home" ]
+          }
+        },
+        "response": []
+      },
+      {
+        "name": "Courses & Content",
+        "item": [
+          {
+            "name": "CreateNewCourse",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{teacher_token}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Mastering Algebra\",\n  \"category\": \"Math\",\n  \"introduction\": \"Full Algebra course for secondary students.\",\n  \"videoUrl\": \"https://youtube.com/intro\",\n  \"schedule\": \"Monday 6:00 PM\",\n  \"classType\": \"Group Class\",\n  \"monthlyPrice\": 150\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/Courses/create-course",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "Courses", "create-course" ]
+              }
+            }
+          },
+          {
+            "name": "AddSessionToCourse",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{teacher_token}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"courseId\": 1,\n  \"title\": \"Session 1: Equations\",\n  \"duration\": \"45 mins\",\n  \"description\": \"How to solve linear equations.\",\n  \"videoUrl\": \"https://vimeo.com/video\",\n  \"homeworkUrl\": \"https://drive.com/hw.pdf\"\n}",
+                "options": {
+                  "raw": {
+                    "language": "json"
+                  }
+                }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/Courses/add-session",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "Courses", "add-session" ]
+              }
+            }
+          },
+          {
+            "name": "GetSubjectCourses",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "http://localhost:5132/api/Courses/subject-courses?category=Math",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "Courses", "subject-courses" ],
+                "query": [
+                  {
+                    "key": "category",
+                    "value": "Math"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "GetCourseDetails",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "http://localhost:5132/api/Courses/course-details/1",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "Courses", "course-details", "1" ]
+              }
+
+            }
+          },
+          {
+            "name": "CreateFullQuiz (Timer + Questions)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{teacher_token}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "POST",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"courseId\": 1,\n  \"title\": \"Algebra Quiz 1\",\n  \"description\": \"Basic equations test\",\n  \"durationInMinutes\": 10,\n  \"questions\": [\n    {\n      \"text\": \"What is 2x = 10?\",\n      \"options\": [\n        { \"text\": \"x=5\", \"isCorrect\": true },\n        { \"text\": \"x=2\", \"isCorrect\": false }\n      ]\n    }\n  ]\n}",
+                "options": { "raw": { "language": "json" } }
+              },
+              "url": {
+                "raw": "http://localhost:5132/api/Courses/create-full-quiz",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "Courses", "create-full-quiz" ]
+              }
+            }
+          },
+          {
+            "name": "SubmitQuiz (Unlock Next Quiz)",
+            "request": {
+              "auth": {
+                "type": "bearer",
+                "bearer": [
+                  {
+                    "key": "token",
+                    "value": "{{token}}",
+                    "type": "string"
+                  }
+                ]
+              },
+              "method": "POST",
+              "url": {
+                "raw": "http://localhost:5132/api/Courses/submit-quiz/1",
+                "host": [ "localhost" ],
+                "port": "5132",
+                "path": [ "api", "Courses", "submit-quiz", "1" ]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
