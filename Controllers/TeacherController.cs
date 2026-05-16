@@ -45,8 +45,8 @@ namespace grad.Controllers
 
             var courseIds = subjects.Select(c => c.Id).ToList();
 
-            var totalStudents = await _db.Enrollments
-                .Where(e => courseIds.Contains(e.CourseId))
+            var totalStudents = await _db.StudentTeachers
+                .Where(st => st.TeacherId == teacher.teacher_id)
                 .Select(e => e.StudentId)
                 .Distinct()
                 .CountAsync();
@@ -85,6 +85,74 @@ namespace grad.Controllers
                 StudentActivityLast30Days = activity
             });
         }
+
+        [HttpGet("students")]
+        public async Task<IActionResult> GetAllStudents()
+        {
+            var teacher = await GetCurrentTeacherAsync();
+
+            if (teacher == null)
+                return NotFound();
+
+       
+            var studentIds = await _db.StudentTeachers
+                .Where(st => st.TeacherId == teacher.teacher_id)
+                .Select(st => st.StudentId)
+                .Distinct()
+                .ToListAsync();
+
+   
+            var students = await _db.Students
+                .Include(s => s.User)
+                .Where(s => studentIds.Contains(s.student_id))
+                .ToListAsync();
+
+
+            var progresses = await _db.LessonProgress
+                .Where(lp => studentIds.Contains(lp.StudentId))
+                .ToListAsync();
+
+            var quizResults = await _db.StudentQuizResults
+                .Where(q => studentIds.Contains(q.StudentId))
+                .ToListAsync();
+
+            var result = students.Select(s =>
+            {
+                var studentProgress = progresses
+                    .Where(p => p.StudentId == s.student_id)
+                    .ToList();
+
+                var studentScores = quizResults
+                    .Where(q => q.StudentId == s.student_id)
+                    .ToList();
+
+                return new
+                {
+                    StudentId = s.student_id,
+
+                    StudentName = s.User != null
+                        ? $"{s.User.firstname} {s.User.lastname}"
+                        : "Unknown",
+
+                    EducationLevel = s.AcademicLevel ?? "N/A",
+
+                    LessonsCompleted = studentProgress
+                        .Count(p => p.ProgressPercent >= 100),
+
+                    AvgScore = studentScores.Any()
+                        ? Math.Round(studentScores.Average(x => x.Percentage), 2)
+                        : 0,
+
+                    LastActive = studentProgress
+                        .OrderByDescending(p => p.LastWatched)
+                        .Select(p => p.LastWatched)
+                        .FirstOrDefault()
+                };
+            });
+
+            return Ok(result);
+        }
+
         [HttpGet("pending-requests")]
         public async Task<IActionResult> GetPendingRequests()
         {
@@ -364,42 +432,60 @@ namespace grad.Controllers
             var teacher = await GetCurrentTeacherAsync();
             if (teacher == null) return NotFound();
 
-            var courseIds = await _db.Courses
-                .Where(c => c.TeacherId == teacher.teacher_id)
-                .Select(c => c.Id)
-                .ToListAsync();
 
-            var studentIds = await _db.Enrollments
-                .Where(e => courseIds.Contains(e.CourseId))
-                .Select(e => e.StudentId)
+            var studentIds = await _db.StudentTeachers
+                .Where(st => st.TeacherId == teacher.teacher_id)
+                .Select(st => st.StudentId)
                 .Distinct()
                 .ToListAsync();
 
-            var users = await _db.Users.Where(u => studentIds.Contains(u.Id)).ToListAsync();
-            var students = await _db.Students.Where(s => studentIds.Contains(s.user_id)).ToListAsync();
-            var progresses = await _db.LessonProgress.Where(lp => studentIds.Contains(lp.StudentId)).ToListAsync();
-            var quizScores = await _db.StudentQuizResults.Where(q => studentIds.Contains(q.StudentId)).ToListAsync();
-            var lessonsCount = await _db.CourseSessions.CountAsync(cs => courseIds.Contains(cs.CourseId));
+            var students = await _db.Students
+                .Include(s => s.User)
+                .Where(s => studentIds.Contains(s.student_id))
+                .ToListAsync();
 
-            var result = studentIds.Select(id =>
+            var progresses = await _db.LessonProgress
+                .Where(lp => studentIds.Contains(lp.StudentId))
+                .ToListAsync();
+
+            var quizScores = await _db.StudentQuizResults
+                .Where(q => studentIds.Contains(q.StudentId))
+                .ToListAsync();
+
+            var lessonsCount = await _db.CourseSessions
+                .Where(cs => cs.Course.TeacherId == teacher.teacher_id)
+                .CountAsync();
+
+            var result = students.Select(s =>
             {
-                var user = users.FirstOrDefault(u => u.Id == id);
-                var student = students.FirstOrDefault(s => s.user_id == id);
-                var studentProgress = progresses.Where(p => p.StudentId == id).ToList();
-                var studentScores = quizScores.Where(s => s.StudentId == id).ToList();
+                var user = s.User;
+
+                var studentProgress = progresses.Where(p => p.StudentId == s.student_id).ToList();
+                var studentScores = quizScores.Where(q => q.StudentId == s.student_id).ToList();
 
                 return new StudentStatsDto
                 {
-                    StudentId = id,
-                    Name = user != null ? $"{user.firstname} {user.lastname}" : "Unknown",
-                    EducationLevel = student?.AcademicLevel ?? "N/A",
+                    StudentId = s.student_id,
+
+
+                    Name = user != null
+                        ? $"{user.firstname} {user.lastname}"
+                        : "Unknown",
+
+                    EducationLevel = s.AcademicLevel ?? "N/A",
 
                     TotalLessons = lessonsCount,
+
                     CompletedLessons = studentProgress.Count(p => p.ProgressPercent >= 100),
 
-                    AvgScore = studentScores.Any() ? (decimal)studentScores.Average(s => s.Score) : 0,
+                    AvgScore = studentScores.Any()
+                        ? (decimal)studentScores.Average(x => x.Score)
+                        : 0,
 
-                    LastActive = studentProgress.OrderByDescending(p => p.LastWatched).Select(p => p.LastWatched).FirstOrDefault(),
+                    LastActive = studentProgress
+                        .OrderByDescending(p => p.LastWatched)
+                        .Select(p => p.LastWatched)
+                        .FirstOrDefault(),
 
                     AbsencePercentage = 0,
                     TasksPercentage = 0,

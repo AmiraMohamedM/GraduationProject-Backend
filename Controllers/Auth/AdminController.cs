@@ -78,8 +78,7 @@ public class AdminController : ControllerBase
         var adminId = GetAdminId();
 
         var totalTeachers = await _db.Teachers.CountAsync(t => t.admin_id == adminId);
-        var approvedTeachers = await _db.Teachers.CountAsync(t => t.admin_id == adminId && t.is_approved);
-        var pendingTeachers = await _db.Teachers.CountAsync(t => t.admin_id == adminId && !t.is_approved);
+       
 
         var totalModerators = await _db.Moderators.CountAsync(m => m.admin_id == adminId);
 
@@ -119,8 +118,7 @@ public class AdminController : ControllerBase
             totalModerators,
             totalStudents,
             totalCourses,
-            approvedTeachers,
-            pendingTeachers,
+
             enrollmentBySubject,
             recentActivities
         });
@@ -141,15 +139,24 @@ public class AdminController : ControllerBase
             .Where(t => t.admin_id == adminId)
             .Select(t => new
             {
-                id = t.User.Id,             
-                teacherId = t.teacher_id,   
+                id = t.User.Id,
+                teacherId = t.teacher_id,
                 firstname = t.User.firstname,
                 lastname = t.User.lastname,
                 email = t.User.Email,
                 subject = t.subject,
-                is_approved = t.is_approved,
+                
+
                 courseCount = _db.Courses.Count(c => c.TeacherId == t.teacher_id),
-                adminName = t.Admin.firstname + " " + t.Admin.lastname
+
+            
+                studentsCount = _db.StudentTeachers
+                    .Where(st => st.TeacherId == t.teacher_id)
+                    .Select(st => st.StudentId)
+                    .Distinct()
+                    .Count(),
+
+
             })
             .ToListAsync();
 
@@ -164,6 +171,10 @@ public class AdminController : ControllerBase
         if (await _userManager.FindByEmailAsync(req.email) != null)
             return BadRequest("Email already exists.");
 
+     
+        if (req.password != req.passwordConfirm)
+            return BadRequest("Password and confirmation do not match.");
+
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid(),
@@ -171,7 +182,7 @@ public class AdminController : ControllerBase
             Email = req.email,
             firstname = req.firstname,
             lastname = req.lastname,
-            EmailConfirmed = true
+            EmailConfirmed = true,
         };
 
         var result = await _userManager.CreateAsync(user, req.password);
@@ -185,7 +196,6 @@ public class AdminController : ControllerBase
             user_id = user.Id,
             admin_id = adminId,
             subject = req.subject ?? "",
-            is_approved = true
         });
 
         await _db.SaveChangesAsync();
@@ -202,19 +212,37 @@ public class AdminController : ControllerBase
     {
         var adminId = GetAdminId();
 
+
         var teacher = await _db.Teachers
             .Include(t => t.User)
-            .FirstOrDefaultAsync(t => t.User.Id == id && t.admin_id == adminId);
+            .FirstOrDefaultAsync(t => t.teacher_id == id && t.admin_id == adminId);
 
-        if (teacher == null) return NotFound("Teacher not found.");
+        if (teacher == null)
+            return NotFound("Teacher not found.");
 
-        if (!string.IsNullOrEmpty(req.firstname)) teacher.User.firstname = req.firstname;
-        if (!string.IsNullOrEmpty(req.lastname)) teacher.User.lastname = req.lastname;
-        if (!string.IsNullOrEmpty(req.subject)) teacher.subject = req.subject;
+        if (teacher.User == null)
+            return BadRequest("Teacher has no user account.");
 
-        await _userManager.UpdateAsync(teacher.User);
+
+        if (!string.IsNullOrEmpty(req.firstname))
+            teacher.User.firstname = req.firstname;
+
+        if (!string.IsNullOrEmpty(req.lastname))
+            teacher.User.lastname = req.lastname;
+
+        if (!string.IsNullOrEmpty(req.subject))
+            teacher.subject = req.subject;
+
+        if (!string.IsNullOrEmpty(req.email))
+            teacher.User.Email = req.email;
+
+        var result = await _userManager.UpdateAsync(teacher.User);
+        if (!result.Succeeded)
+            return BadRequest(result.Errors);
+
         await _db.SaveChangesAsync();
 
+  
         await _logger.Log(adminId,
             $"Teacher {teacher.User.firstname} {teacher.User.lastname} updated"
         );
@@ -228,17 +256,15 @@ public class AdminController : ControllerBase
         var adminId = GetAdminId();
 
         var teacher = await _db.Teachers
-            .Include(t => t.User)
-            .FirstOrDefaultAsync(t => t.User.Id == id && t.admin_id == adminId);
+            .FirstOrDefaultAsync(t => t.teacher_id == id && t.admin_id == adminId);
 
-        if (teacher == null) return NotFound("Teacher not found.");
+        if (teacher == null)
+            return NotFound("Teacher not found.");
 
-        await _userManager.DeleteAsync(teacher.User);
-        await _db.SaveChangesAsync();
+        var user = await _userManager.FindByIdAsync(teacher.user_id.ToString());
 
-        await _logger.Log(adminId,
-            $"Teacher {teacher.User.firstname} {teacher.User.lastname} deleted"
-        );
+        if (user != null)
+            await _userManager.DeleteAsync(user);
 
         return Ok(new { message = "Teacher deleted successfully." });
     }
@@ -434,23 +460,9 @@ public class AdminController : ControllerBase
             .Where(x => x.value > 0)
             .ToListAsync();
 
-        var subjectPassRates = await _db.Courses
-            .Include(c => c.Teacher).ThenInclude(t => t.User)
-            .Where(c => c.Teacher.admin_id == adminId)
-            .GroupBy(c => c.Id)
-            .Select(g => new
-            {
-                subject = g.Key,
-                teachers = g.Select(c => new
-                {
-                    name = c.Teacher.User.firstname + " " + c.Teacher.User.lastname,
-                    courseTitle = c.Title,
-                    sessionCount = c.CourseSessions.Count
-                }).ToList()
-            })
-            .ToListAsync();
 
-        return Ok(new { enrollmentBySubject, studentsPerTeacher, subjectPassRates });
+
+        return Ok(new { enrollmentBySubject, studentsPerTeacher});
     }
 
     // ================================================================
@@ -518,8 +530,9 @@ public class CreateTeacherRequest
     public string lastname { get; set; }
     public string email { get; set; }
     public string password { get; set; }
+    public string passwordConfirm { get; set; }
     public string? subject { get; set; }
-    public string? bio { get; set; }
+
 }
 
 public class UpdateTeacherRequest
@@ -527,7 +540,7 @@ public class UpdateTeacherRequest
     public string? firstname { get; set; }
     public string? lastname { get; set; }
     public string? subject { get; set; }
-    public string? bio { get; set; }
+    public string? email { get; set; }
 }
 
 public class CreateModeratorRequest
