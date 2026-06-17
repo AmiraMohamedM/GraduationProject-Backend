@@ -18,8 +18,8 @@ docker-compose --version
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/maryamshaban-p/graduationProject.git
-cd graduationProject
+git clone https://github.com/AmiraMohamedM/GraduationProject-Backend.git
+cd GraduationProject-Backend
 ```
 
 ### Start All Services
