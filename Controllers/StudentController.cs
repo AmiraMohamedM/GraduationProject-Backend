@@ -243,7 +243,7 @@ namespace grad.Controllers
                 ParentPhoneNumber = student.ParentPhoneNumber
             });
         }
-        [HttpPost("profile/photo")]
+      /*  [HttpPost("profile/photo")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> AddPhoto([FromForm] IFormFile file)
         {
@@ -308,7 +308,7 @@ namespace grad.Controllers
             });
         }
     
-
+*/
 
         [HttpGet("messages")]
         public async Task<IActionResult> GetConversations()
