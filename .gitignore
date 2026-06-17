@@ -3,3 +3,10 @@ bin/
 obj/
 out/
 *.user
+PythonService/.env
+PythonService/model.safetensors
+PythonService/config.json
+PythonService/generation_config.json
+PythonService/tokenizer_config.json
+PythonService/tokenizer.json
+PythonService/__pycache__

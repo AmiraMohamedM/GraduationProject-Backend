@@ -1,0 +1,19 @@
+# API
+fastapi
+uvicorn[standard]
+python-multipart
+
+# PDF extraction
+pdfplumber
+pypdf
+
+# Summarization (T5)
+torch
+transformers
+sentencepiece
+
+# Quiz generation (Gemini)
+google-genai
+
+# Environment variables
+python-dotenv
