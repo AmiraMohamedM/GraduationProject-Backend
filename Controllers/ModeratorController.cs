@@ -38,7 +38,8 @@ namespace grad.Controllers
             _logger = logger;
         }
 
-       
+      
+        // DASHBOARD
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetDashboard()
         {
@@ -48,9 +49,9 @@ namespace grad.Controllers
                 .Where(t => t.ModeratorId == moderatorId && t.is_approved)
                 .CountAsync();
 
-            var totalStudents = await _db.StudentTeachers
-                .Where(st => st.Teacher.ModeratorId == moderatorId)
-                .Select(st => st.StudentId)
+            var totalStudents = await _db.Enrollments
+                .Where(e => e.Course.Teacher.ModeratorId == moderatorId)
+                .Select(e => e.StudentId)
                 .Distinct()
                 .CountAsync();
 
@@ -64,8 +65,10 @@ namespace grad.Controllers
 
             var recentStudents = await _db.Students
                 .Include(s => s.User)
-                .Where(s => _db.StudentTeachers.Any(st => st.StudentId == s.student_id && st.Teacher.ModeratorId == moderatorId))
-                .OrderByDescending(s => s.student_id)
+                .Where(s => _db.Enrollments.Any(e =>
+                    e.StudentId == s.student_id &&
+                    e.Course.Teacher.ModeratorId == moderatorId))
+                .OrderByDescending(s => s.User.CreatedAt)
                 .Take(5)
                 .Select(s => new
                 {
@@ -77,29 +80,46 @@ namespace grad.Controllers
                 })
                 .ToListAsync();
 
+            var moderatorCourseIds = await _db.Courses
+                .Where(c => c.Teacher.ModeratorId == moderatorId)
+                .Select(c => c.Id)
+                .ToListAsync();
 
             var pendingRequests = await _db.StudentRequests
-                .CountAsync(r => r.Status == "Pending");
+                .CountAsync(r => r.Status == "Pending"
+                    && moderatorCourseIds.Contains(r.CourseSession.CourseId));
 
             var assignedTeachers = await _db.Teachers
                 .Include(t => t.User)
                 .Where(t => t.ModeratorId == moderatorId && t.is_approved)
-                .Select(t => new {
+                .Select(t => new
+                {
                     t.teacher_id,
                     FullName = t.User.firstname + " " + t.User.lastname,
-                    Subject = t.subject,
+                    Subjects = _db.Courses
+                        .Where(c => c.TeacherId == t.teacher_id)
+                        .Select(c => c.Title)
+                        .Distinct()
+                        .ToList(),
                     Initials = t.User.firstname.Substring(0, 1).ToUpper() + t.User.lastname.Substring(0, 1).ToUpper()
                 })
                 .ToListAsync();
 
-            var teachersDistribution = assignedTeachers.Select(t => new {
+            var teachersDistribution = assignedTeachers.Select(t => new
+            {
                 TeacherName = t.FullName,
-                StudentCount = _db.StudentTeachers.Count(st => st.TeacherId == t.teacher_id)
+                StudentCount = _db.Enrollments.Count(e => e.Course.TeacherId == t.teacher_id)
             }).ToList();
-            var firstDayOfMonth = DateTime.SpecifyKind(new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1), DateTimeKind.Utc);
+
+            var firstDayOfMonth = DateTime.SpecifyKind(
+                new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1),
+                DateTimeKind.Utc);
+
             var newStudentsThisMonth = await _db.Students
                 .Include(s => s.User)
-                .Where(s => _db.StudentTeachers.Any(st => st.StudentId == s.student_id && st.Teacher.ModeratorId == moderatorId))
+                .Where(s => _db.Enrollments.Any(e =>
+                    e.StudentId == s.student_id &&
+                    e.Course.Teacher.ModeratorId == moderatorId))
                 .CountAsync(s => s.User.CreatedAt >= firstDayOfMonth);
 
             return Ok(new
@@ -115,6 +135,9 @@ namespace grad.Controllers
                 ChartData = teachersDistribution
             });
         }
+
+        // MY-STUDENTS
+       
         [HttpGet("my-students")]
         public async Task<IActionResult> GetMyStudents()
         {
@@ -122,9 +145,9 @@ namespace grad.Controllers
 
             var result = await _db.Students
                 .Include(s => s.User)
-                .Where(s => _db.StudentTeachers.Any(st =>
-                    st.Teacher.ModeratorId == moderatorId &&
-                    (st.StudentId == s.student_id))) 
+                .Where(s => _db.Enrollments.Any(e =>
+                    e.StudentId == s.student_id &&
+                    e.Course.Teacher.ModeratorId == moderatorId))
                 .Select(s => new
                 {
                     StudentId = s.student_id,
@@ -132,19 +155,20 @@ namespace grad.Controllers
                     EducationLevel = s.AcademicLevel + " - " + s.AcademicYear,
 
                     AssignedTeachers = _db.StudentTeachers
-                        .Where(st => st.StudentId == s.student_id)
+                        .Where(st => st.StudentId == s.student_id &&
+                                     st.Teacher.ModeratorId == moderatorId)
                         .Select(st => st.Teacher.User.firstname + " " + st.Teacher.User.lastname)
                         .ToList(),
-
-                    Subjects = _db.StudentTeachers
-                        .Where(st => st.StudentId == s.student_id)
-                        .Select(st => st.Teacher.subject)
+                    Subjects = _db.Enrollments
+                        .Where(e => e.StudentId == s.student_id &&
+                                    e.Course.Teacher.ModeratorId == moderatorId)
+                        .Select(e => e.Course.Title)
                         .Distinct()
                         .ToList(),
 
                     AvgScore = _db.StudentQuizResults
                         .Where(qr => qr.StudentId == s.student_id)
-                        .Average(qr => (double?)qr.Score) ?? 0,
+                        .Average(qr => (double?)qr.Percentage) ?? 0,
 
                     MissingDays = _db.StudentAbsences
                         .Count(a => a.StudentId == s.student_id),
@@ -155,30 +179,41 @@ namespace grad.Controllers
 
             return Ok(result);
         }
+
+        // MY-TEACHERS
         [HttpGet("my-teachers")]
         public async Task<IActionResult> GetMyTeachers()
         {
             var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var teachers = await _db.Teachers
-                .Include(t => t.User) 
+                .Include(t => t.User)
                 .Where(t => t.ModeratorId == moderatorId)
                 .Select(t => new
                 {
                     TeacherId = t.teacher_id,
-                    UserId = t.user_id,       
+                    UserId = t.user_id,
                     FullName = t.User.firstname + " " + t.User.lastname,
                     Email = t.User.Email,
-                    Subject = t.subject,
+                    Subjects = _db.Courses
+                        .Where(c => c.TeacherId == t.teacher_id)
+                        .Select(c => c.Title)
+                        .Distinct()
+                        .ToList(),
                     IsApproved = t.is_approved,
-                    StudentCount = _db.StudentTeachers.Count(st => st.TeacherId == t.teacher_id)
+                    StudentCount = _db.Enrollments
+                        .Where(e => e.Course.TeacherId == t.teacher_id)
+                        .Select(e => e.StudentId)
+                        .Distinct()
+                        .Count()
                 })
                 .ToListAsync();
 
             return Ok(teachers);
         }
 
-
+        // ─────────────────────────────────────────────
+        // GET ALL STUDENTS (search/filter — no moderator scope required by design,
         [HttpGet("students")]
         public async Task<IActionResult> GetStudents(
             [FromQuery] string? search,
@@ -201,22 +236,48 @@ namespace grad.Controllers
             {
                 query = query.Where(s => s.AcademicLevel.ToLower() == academicLevel.ToLower());
             }
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var students = await query.Select(s => new
             {
-                s.student_id,
-                s.user_id,
-                Name = s.User.firstname + " " + s.User.lastname,
-                s.User.Email,
-                AcademicLevel = s.AcademicLevel,
-                AcademicYear = s.AcademicYear,
-                s.parent_email
-            }).ToListAsync();
+                StudentId = s.student_id,
 
+                FullName = s.User.firstname + " " + s.User.lastname,
+
+                EducationLevel = s.AcademicLevel + " - " + s.AcademicYear,
+
+                AssignedTeachers = _db.StudentTeachers
+                    .Where(st => st.StudentId == s.student_id &&
+                                 st.Teacher.ModeratorId == moderatorId)
+                    .Select(st => st.Teacher.User.firstname + " " +
+                                  st.Teacher.User.lastname)
+                    .ToList(),
+
+                Subjects = _db.Enrollments
+                    .Where(e => e.StudentId == s.student_id &&
+                                e.Course.Teacher.ModeratorId == moderatorId)
+                    .Select(e => e.Course.Title)
+                    .Distinct()
+                    .ToList(),
+
+                AvgScore = _db.StudentQuizResults
+                    .Where(qr => qr.StudentId == s.student_id)
+                    .Average(qr => (double?)qr.Percentage) ?? 0,
+
+                MissingDays = _db.StudentAbsences
+                    .Count(a => a.StudentId == s.student_id),
+
+                Joined = s.User.CreatedAt.ToString("MMM dd, yyyy"),
+
+                Email = s.User.Email,
+
+                ParentPhone = s.ParentPhoneNumber
+            })
+            .ToListAsync();
             return Ok(students);
         }
 
-
+        // GET SINGLE STUDENT
         [HttpGet("students/{studentId:guid}")]
         public async Task<IActionResult> GetStudent(Guid studentId)
         {
@@ -250,12 +311,16 @@ namespace grad.Controllers
                 student.User.PhoneNumber,
                 AcademicLevel = student.AcademicLevel,
                 AcademicYear = student.AcademicYear,
-                ParentPhone = student.parent_email,
+                ParentPhone = student.ParentPhoneNumber,
                 AssignedTeachers = student.AssignedTeachers.Select(st => new
                 {
                     st.Teacher.teacher_id,
                     Name = st.Teacher.User.firstname + " " + st.Teacher.User.lastname,
-                    Subject = st.Teacher.subject
+                    Subjects = _db.Courses
+                        .Where(c => c.TeacherId == st.Teacher.teacher_id)
+                        .Select(c => c.Title)
+                        .Distinct()
+                        .ToList(),
                 }),
                 Statistics = new
                 {
@@ -267,7 +332,6 @@ namespace grad.Controllers
                 {
                     e.CourseId,
                     CourseTitle = e.Course.Title,
-                  
                     TeacherName = e.Course.Teacher.User.firstname + " " + e.Course.Teacher.User.lastname,
                     Progress = e.ProgressPercent,
                     e.EnrolledAt
@@ -306,6 +370,8 @@ namespace grad.Controllers
                 return StatusCode(500, new { message = "An unexpected error occurred. Please try again." });
             }
         }
+
+        // ENROLLMENT RECORDS
         [HttpGet("enrollment-records")]
         public async Task<IActionResult> GetEnrollmentRecords()
         {
@@ -315,12 +381,12 @@ namespace grad.Controllers
                 .Include(e => e.Student).ThenInclude(s => s.User)
                 .Include(e => e.Course).ThenInclude(c => c.Teacher).ThenInclude(t => t.User)
                 .Where(e => e.Course.Teacher.ModeratorId == moderatorId)
-                .OrderByDescending(e => e.EnrolledAt) 
+                .OrderByDescending(e => e.EnrolledAt)
                 .Select(e => new
                 {
                     StudentName = e.Student.User.firstname + " " + e.Student.User.lastname,
                     TeacherName = e.Course.Teacher.User.firstname + " " + e.Course.Teacher.User.lastname,
-                    Subject = e.Course.Teacher.subject,
+                    CourseName = e.Course.Title,
                     DateEnrolled = e.EnrolledAt.ToString("MMM dd, yyyy")
                 })
                 .ToListAsync();
@@ -341,7 +407,7 @@ namespace grad.Controllers
             student.User.firstname = dto.FirstName ?? student.User.firstname;
             student.User.lastname = dto.LastName ?? student.User.lastname;
             student.User.Email = dto.Email ?? student.User.Email;
-            student.parent_email = dto.ParentPhoneNumber ?? student.parent_email;
+            student.ParentPhoneNumber = dto.ParentPhoneNumber ?? student.ParentPhoneNumber  ;
             if (!string.IsNullOrEmpty(dto.AcademicLevel)) student.AcademicLevel = dto.AcademicLevel;
             if (dto.AcademicYear.HasValue) student.AcademicYear = dto.AcademicYear.Value;
 
@@ -406,7 +472,11 @@ namespace grad.Controllers
                 {
                     st.Teacher.teacher_id,
                     Name = st.Teacher.User.firstname + " " + st.Teacher.User.lastname,
-                    Subject = st.Teacher.subject,
+                    Subjects = _db.Courses
+                        .Where(c => c.TeacherId == st.Teacher.teacher_id)
+                        .Select(c => c.Title)
+                        .Distinct()
+                        .ToList(),
                     st.Teacher.User.Email
                 })
                 .ToListAsync();
@@ -510,31 +580,12 @@ namespace grad.Controllers
                 {
                     c.Id,
                     c.Title,
-                   
                     TeacherName = c.Teacher.User.firstname + " " + c.Teacher.User.lastname,
-
                 })
                 .ToListAsync();
 
             return Ok(courses);
         }
-
-        // ACADEMIC LEVELS & CLASS LEVELS
-       // [HttpGet("academic-levels")]
-       // public async Task<IActionResult> GetAcademicLevels()
-       // {
-       //     var levels = await _db.AcademicLevels
-           //     .Include(a => a.ClassLevels)
-            //    .Select(a => new
-            //    {
-             //       a.id,
-             //       a.name,
-              //      ClassLevels = a.ClassLevels.Select(c => new { c.id, c.name })
-              //  })
-               // .ToListAsync();
-
-           // return Ok(levels);
-      //  }
 
         // SEND NOTIFICATION TO STUDENT
         [HttpPost("students/{studentId:guid}/notify")]
@@ -555,15 +606,17 @@ namespace grad.Controllers
             return Ok(new { message = "Notification sent." });
         }
 
-
+        // ALL STUDENTS STATS
         [HttpGet("all-students-stats")]
         public async Task<IActionResult> GetAllStudentsStats()
         {
-            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var stats = await _db.Students
-                .Include(s => s.User) 
-                .Where(s => _db.StudentTeachers.Any(st => st.Teacher.ModeratorId == moderatorId && st.StudentId == s.student_id))
+                .Include(s => s.User)
+                .Where(s => _db.Enrollments.Any(e =>
+                    e.StudentId == s.student_id &&
+                    e.Course.Teacher.ModeratorId == moderatorId))
                 .Select(s => new
                 {
                     StudentId = s.student_id,
@@ -596,20 +649,25 @@ namespace grad.Controllers
                         .Select(p => p.ProgressPercent)
                         .FirstOrDefault(),
 
-                    Status = _db.LessonProgress.Any(p => p.StudentId == studentId && p.LessonId == session.Id && p.ProgressPercent > 20)
-                             ? "Attended" : "Absent"
+                    Status = _db.LessonProgress.Any(p =>
+                        p.StudentId == studentId &&
+                        p.LessonId == session.Id &&
+                        p.ProgressPercent > 20)
+                            ? "Attended" : "Absent"
                 })
                 .ToListAsync();
 
             return Ok(report);
         }
+
         [HttpGet("students/{studentId:guid}/watch-progress")]
         public async Task<IActionResult> GetDetailedWatchProgress(Guid studentId)
         {
             var progress = await _db.LessonProgress
                 .Include(lp => lp.CourseSession)
                 .Where(lp => lp.StudentId == studentId)
-                .Select(lp => new {
+                .Select(lp => new
+                {
                     LessonName = lp.CourseSession.Title,
                     Percentage = lp.ProgressPercent,
                     LastSeen = lp.LastWatched
@@ -668,13 +726,14 @@ namespace grad.Controllers
                 TotalAbsence = totalAbsences
             });
         }
+
         [HttpGet("activity-timeline")]
         public async Task<IActionResult> GetActivityTimeline()
         {
             var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var activities = await _db.ActivityLogs
-                .Where(a => a.UserId == moderatorId) 
+                .Where(a => a.UserId == moderatorId)
                 .OrderByDescending(a => a.CreatedAt)
                 .Take(15)
                 .Select(a => new
@@ -696,7 +755,7 @@ namespace grad.Controllers
             return dt.ToString("MMM dd, yyyy");
         }
 
-        // TEACHERS LIST
+        // TEACHERS LIST (global approved — used by assignment dropdowns)
         [HttpGet("teachers")]
         public async Task<IActionResult> GetTeachers()
         {
@@ -708,8 +767,11 @@ namespace grad.Controllers
                     t.teacher_id,
                     Name = t.User.firstname + " " + t.User.lastname,
                     t.User.Email,
-                    t.subject
-                    
+                    Subjects = _db.Courses
+                        .Where(c => c.TeacherId == t.teacher_id)
+                        .Select(c => c.Title)
+                        .Distinct()
+                        .ToList(),
                 })
                 .ToListAsync();
 
@@ -754,9 +816,7 @@ namespace grad.Controllers
 
     public class RecordAbsenceDto
     {
-
         public DateTime? AbsenceDate { get; set; }
-
         public string? Note { get; set; }
     }
 }

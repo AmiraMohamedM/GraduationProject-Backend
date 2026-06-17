@@ -78,7 +78,7 @@ public class AdminController : ControllerBase
         var adminId = GetAdminId();
 
         var totalTeachers = await _db.Teachers.CountAsync(t => t.admin_id == adminId);
-       
+
 
         var totalModerators = await _db.Moderators.CountAsync(m => m.admin_id == adminId);
 
@@ -102,7 +102,7 @@ public class AdminController : ControllerBase
             .ToListAsync();
 
         var recentActivities = await _db.ActivityLogs
-     .OrderByDescending(a => a.CreatedAt) 
+     .OrderByDescending(a => a.CreatedAt)
      .Take(10)
      .Select(a => new
      {
@@ -145,11 +145,11 @@ public class AdminController : ControllerBase
                 lastname = t.User.lastname,
                 email = t.User.Email,
                 subject = t.subject,
-                
+
 
                 courseCount = _db.Courses.Count(c => c.TeacherId == t.teacher_id),
 
-            
+
                 studentsCount = _db.StudentTeachers
                     .Where(st => st.TeacherId == t.teacher_id)
                     .Select(st => st.StudentId)
@@ -171,7 +171,7 @@ public class AdminController : ControllerBase
         if (await _userManager.FindByEmailAsync(req.email) != null)
             return BadRequest("Email already exists.");
 
-     
+
         if (req.password != req.passwordConfirm)
             return BadRequest("Password and confirmation do not match.");
 
@@ -242,7 +242,7 @@ public class AdminController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-  
+
         await _logger.Log(adminId,
             $"Teacher {teacher.User.firstname} {teacher.User.lastname} updated"
         );
@@ -346,7 +346,7 @@ public class AdminController : ControllerBase
                 var teacher = await _db.Teachers.FirstOrDefaultAsync(t => t.user_id == tid);
                 if (teacher != null)
                 {
-                    teacher.ModeratorId = user.Id; 
+                    teacher.ModeratorId = user.Id;
                 }
             }
 
@@ -462,7 +462,7 @@ public class AdminController : ControllerBase
 
 
 
-        return Ok(new { enrollmentBySubject, studentsPerTeacher});
+        return Ok(new { enrollmentBySubject, studentsPerTeacher });
     }
 
     // ================================================================
@@ -511,7 +511,7 @@ public class AdminController : ControllerBase
             user.Phone = req.phone;
 
 
- 
+
 
 
         await _userManager.UpdateAsync(user);

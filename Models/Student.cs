@@ -12,8 +12,10 @@ namespace grad.Models
         [ForeignKey("User")]
         public Guid user_id { get; set; }
 
-        public string parent_email { get; set; }
+        public string ParentPhoneNumber { get; set; }
+        public string? ProfileImageUrl { get; set; }
 
+        public string? ProfileImagePublicId { get; set; }
         public string AcademicLevel { get; set; } = string.Empty;
         public int AcademicYear { get; set; }
         public ApplicationUser User { get; set; } = null!;

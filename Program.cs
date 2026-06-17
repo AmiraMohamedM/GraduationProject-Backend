@@ -1,4 +1,6 @@
 ﻿using grad.Data;
+using grad.Helpers;
+using grad.Interfaces;
 using grad.Infrastructure.Interceptors;
 using grad.Models;
 using grad.Services;
@@ -10,7 +12,7 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
@@ -33,6 +35,8 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.Configure<CloudinarySettings>(
+    builder.Configuration.GetSection("CloudinarySettings"));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ActivityInterceptor>();
 builder.Services.AddScoped<ActivityLogger>();
@@ -80,6 +84,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Main API", Version = "v1" });
@@ -171,7 +176,7 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        logger.LogInformation("🌱 Seeding roles and admin user...");
+        logger.LogInformation(" Seeding roles and admin user...");
 
         await SeedData.SeedRolesAsync(services);
         await SeedData.SeedAdminAsync(services);
