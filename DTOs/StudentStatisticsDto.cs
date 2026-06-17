@@ -1,11 +1,10 @@
 namespace grad.DTOs
 {
-
     public class StudentStatisticsDto
     {
         public Guid StudentId { get; set; }
-        public int Absence { get; set; }
-        public int Tasks { get; set; }
-        public int Quiz { get; set; }
+        public decimal Absence { get; set; }
+        public decimal Tasks { get; set; }
+        public decimal Quiz { get; set; }
     }
 }
