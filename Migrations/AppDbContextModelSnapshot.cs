@@ -328,6 +328,12 @@ namespace grad.Migrations
                     b.Property<DateTime?>("PlanExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ProfileImagePublicId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProfileImageUrl")
+                        .HasColumnType("text");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
@@ -748,6 +754,31 @@ namespace grad.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("grad.Models.Photo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("PublicId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Photos");
+                });
+
             modelBuilder.Entity("grad.Models.Question", b =>
                 {
                     b.Property<int>("Id")
@@ -808,8 +839,14 @@ namespace grad.Migrations
                     b.Property<int>("AcademicYear")
                         .HasColumnType("integer");
 
-                    b.Property<string>("parent_email")
+                    b.Property<string>("ParentPhoneNumber")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProfileImagePublicId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProfileImageUrl")
                         .HasColumnType("text");
 
                     b.Property<Guid>("user_id")
@@ -1277,6 +1314,17 @@ namespace grad.Migrations
                 });
 
             modelBuilder.Entity("grad.Models.Notification", b =>
+                {
+                    b.HasOne("grad.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("grad.Models.Photo", b =>
                 {
                     b.HasOne("grad.Models.ApplicationUser", "User")
                         .WithMany()

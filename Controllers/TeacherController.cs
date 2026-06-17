@@ -1,4 +1,4 @@
-﻿using grad.Data;
+using grad.Data;
 using grad.DTOs;
 using grad.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -23,12 +23,15 @@ namespace grad.Controllers
             _userManager = userManager;
         }
 
+
         private async Task<Teacher?> GetCurrentTeacherAsync()
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             return await _db.Teachers.FirstOrDefaultAsync(t => t.user_id == userId);
         }
 
+        // DASHBOARD
+       
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetDashboard()
         {
@@ -36,7 +39,8 @@ namespace grad.Controllers
             var user = await _userManager.FindByIdAsync(userId.ToString());
             var teacher = await GetCurrentTeacherAsync();
 
-            if (teacher == null) return NotFound();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
+            if (user == null) return NotFound(new { message = "User not found." });
 
             var subjects = await _db.Courses
                 .Where(c => c.TeacherId == teacher.teacher_id)
@@ -63,8 +67,7 @@ namespace grad.Controllers
             var activity = await _db.StudentQuizResults
                 .Where(r =>
                     r.CreatedAt >= last30Days &&
-                    courseIds.Contains(r.Quiz.CourseSession.CourseId)
-                )
+                    courseIds.Contains(r.Quiz.CourseSession.CourseId))
                 .GroupBy(r => r.CreatedAt.Date)
                 .Select(g => new
                 {
@@ -76,19 +79,90 @@ namespace grad.Controllers
 
             return Ok(new
             {
-                TeacherName = user!.firstname + " " + user.lastname,
+                TeacherName = user.firstname + " " + user.lastname,
                 TotalSubjects = subjects.Count,
                 TotalStudents = totalStudents,
                 TotalSessions = totalSessions,
                 PendingRequests = pendingRequests,
-
                 StudentActivityLast30Days = activity
             });
         }
+
+        // GET ALL STUDENTS
+        
+        [HttpGet("students")]
+        public async Task<IActionResult> GetAllStudents()
+        {
+            var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
+
+            var courseIds = await _db.Courses
+                .Where(c => c.TeacherId == teacher.teacher_id)
+                .Select(c => c.Id)
+                .ToListAsync();
+
+            var studentIds = await _db.Enrollments
+                .Where(e => courseIds.Contains(e.CourseId))
+                .Select(e => e.StudentId)
+                .Distinct()
+                .ToListAsync();
+
+            var students = await _db.Students
+                .Include(s => s.User)
+                .Where(s => studentIds.Contains(s.student_id))
+                .ToListAsync();
+
+            var progresses = await _db.LessonProgress
+                .Where(lp => studentIds.Contains(lp.StudentId))
+                .ToListAsync();
+
+            var quizResults = await _db.StudentQuizResults
+                .Where(q => studentIds.Contains(q.StudentId))
+                .ToListAsync();
+
+            var result = students.Select(s =>
+            {
+                var studentProgress = progresses
+                    .Where(p => p.StudentId == s.student_id)
+                    .ToList();
+
+                var studentScores = quizResults
+                    .Where(q => q.StudentId == s.student_id)
+                    .ToList();
+
+                return new
+                {
+                    StudentId = s.student_id,
+
+                    StudentName = s.User != null
+                        ? $"{s.User.firstname} {s.User.lastname}"
+                        : "Unknown",
+
+                    EducationLevel = s.AcademicLevel ?? "N/A",
+
+                    LessonsCompleted = studentProgress
+                        .Count(p => p.ProgressPercent >= 100),
+
+                    AvgScore = studentScores.Any()
+                        ? Math.Round(studentScores.Average(x => (double)x.Percentage), 2)
+                        : 0,
+
+                    LastActive = studentProgress
+                        .OrderByDescending(p => p.LastWatched)
+                        .Select(p => p.LastWatched)
+                        .FirstOrDefault()
+                };
+            });
+
+            return Ok(result);
+        }
+
+        // PENDING REQUESTS
         [HttpGet("pending-requests")]
         public async Task<IActionResult> GetPendingRequests()
         {
             var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var requests = await _db.StudentRequests
                 .Include(r => r.Student).ThenInclude(s => s.User)
@@ -132,10 +206,14 @@ namespace grad.Controllers
 
             return Ok();
         }
+
+        // SUBJECTS (COURSES)
+      
         [HttpGet("subjects")]
         public async Task<IActionResult> GetSubjects()
         {
             var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var subjects = await _db.Courses
                 .Where(c => c.TeacherId == teacher.teacher_id)
@@ -162,6 +240,7 @@ namespace grad.Controllers
         public async Task<IActionResult> CreateSubject(CreateCourseDto dto)
         {
             var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var subject = new Course
             {
@@ -193,7 +272,6 @@ namespace grad.Controllers
             subject.AcademicYear = dto.AcademicYear;
 
             _db.Courses.Update(subject);
-
             await _db.SaveChangesAsync();
 
             return Ok(new { message = "Updated", subject });
@@ -203,6 +281,7 @@ namespace grad.Controllers
         public async Task<IActionResult> DeleteSubject(int courseId)
         {
             var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var subject = await _db.Courses
                 .FirstOrDefaultAsync(c => c.Id == courseId && c.TeacherId == teacher.teacher_id);
@@ -219,6 +298,7 @@ namespace grad.Controllers
         public async Task<IActionResult> GetSubjectDetail(int courseId)
         {
             var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var subject = await _db.Courses
                 .Include(c => c.CourseSessions)
@@ -256,13 +336,14 @@ namespace grad.Controllers
         public async Task<IActionResult> AddLesson(int courseId, AddLessonDto dto)
         {
             var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var subject = await _db.Courses
                 .FirstOrDefaultAsync(c => c.Id == courseId && c.TeacherId == teacher.teacher_id);
 
             if (subject == null) return NotFound();
 
-            var CourseSession = new CourseSession
+            var courseSession = new CourseSession
             {
                 CourseId = courseId,
                 Title = dto.Title,
@@ -273,29 +354,30 @@ namespace grad.Controllers
                 HasEntryTest = dto.HasEntryTest
             };
 
-            _db.CourseSessions.Add(CourseSession);
+            _db.CourseSessions.Add(courseSession);
             await _db.SaveChangesAsync();
 
-            return Ok(CourseSession);
+            return Ok(courseSession);
         }
 
         [HttpPut("lessons/{lessonId}")]
         public async Task<IActionResult> UpdateLesson(int lessonId, AddLessonDto dto)
         {
             var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
-            var CourseSession = await _db.CourseSessions
+            var courseSession = await _db.CourseSessions
                 .Include(l => l.Course)
                 .FirstOrDefaultAsync(l => l.Id == lessonId && l.Course.TeacherId == teacher.teacher_id);
 
-            if (CourseSession == null) return NotFound();
+            if (courseSession == null) return NotFound();
 
-            CourseSession.Title = dto.Title ?? CourseSession.Title;
-            CourseSession.AttachmentUrl = dto.AttachmentUrl ?? CourseSession.AttachmentUrl;
-            CourseSession.AvailableDays = dto.AvailableDays;
-            CourseSession.MaxViews = dto.MaxViews;
-            CourseSession.HomeworkUrl = dto.HomeworkUrl ?? CourseSession.HomeworkUrl;
-            CourseSession.HasEntryTest = dto.HasEntryTest;
+            courseSession.Title = dto.Title ?? courseSession.Title;
+            courseSession.AttachmentUrl = dto.AttachmentUrl ?? courseSession.AttachmentUrl;
+            courseSession.AvailableDays = dto.AvailableDays;
+            courseSession.MaxViews = dto.MaxViews;
+            courseSession.HomeworkUrl = dto.HomeworkUrl ?? courseSession.HomeworkUrl;
+            courseSession.HasEntryTest = dto.HasEntryTest;
 
             await _db.SaveChangesAsync();
 
@@ -306,14 +388,15 @@ namespace grad.Controllers
         public async Task<IActionResult> DeleteLesson(int lessonId)
         {
             var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
-            var CourseSession = await _db.CourseSessions
+            var courseSession = await _db.CourseSessions
                 .Include(l => l.Course)
                 .FirstOrDefaultAsync(l => l.Id == lessonId && l.Course.TeacherId == teacher.teacher_id);
 
-            if (CourseSession == null) return NotFound();
+            if (courseSession == null) return NotFound();
 
-            _db.CourseSessions.Remove(CourseSession);
+            _db.CourseSessions.Remove(courseSession);
             await _db.SaveChangesAsync();
 
             return Ok(new { message = "CourseSession deleted" });
@@ -323,6 +406,7 @@ namespace grad.Controllers
         public async Task<IActionResult> AddEntryTest(int lessonId, AddEntryTestDto dto)
         {
             var teacher = await GetCurrentTeacherAsync();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var courseSession = await _db.CourseSessions
                 .Include(l => l.Course)
@@ -332,7 +416,7 @@ namespace grad.Controllers
 
             var quiz = new Quiz
             {
-                CourseSessionId = lessonId, 
+                CourseSessionId = lessonId,
                 Title = dto.Title,
                 PassingScore = dto.PassingScore,
                 RetakeIntervalHours = dto.RetakeIntervalHours,
@@ -358,11 +442,13 @@ namespace grad.Controllers
                 quiz.RetakeIntervalHours
             });
         }
+
+        // STUDENTS STATS
         [HttpGet("students/stats")]
         public async Task<IActionResult> GetStudentsStats()
         {
             var teacher = await GetCurrentTeacherAsync();
-            if (teacher == null) return NotFound();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var courseIds = await _db.Courses
                 .Where(c => c.TeacherId == teacher.teacher_id)
@@ -375,31 +461,66 @@ namespace grad.Controllers
                 .Distinct()
                 .ToListAsync();
 
-            var users = await _db.Users.Where(u => studentIds.Contains(u.Id)).ToListAsync();
-            var students = await _db.Students.Where(s => studentIds.Contains(s.user_id)).ToListAsync();
-            var progresses = await _db.LessonProgress.Where(lp => studentIds.Contains(lp.StudentId)).ToListAsync();
-            var quizScores = await _db.StudentQuizResults.Where(q => studentIds.Contains(q.StudentId)).ToListAsync();
-            var lessonsCount = await _db.CourseSessions.CountAsync(cs => courseIds.Contains(cs.CourseId));
+            var students = await _db.Students
+                .Include(s => s.User)
+                .Where(s => studentIds.Contains(s.student_id))
+                .ToListAsync();
 
-            var result = studentIds.Select(id =>
+            var progresses = await _db.LessonProgress
+                .Where(lp => studentIds.Contains(lp.StudentId))
+                .ToListAsync();
+
+            var quizScores = await _db.StudentQuizResults
+                .Where(q => studentIds.Contains(q.StudentId))
+                .ToListAsync();
+
+            var enrollments = await _db.Enrollments
+                .Where(e => courseIds.Contains(e.CourseId))
+                .ToListAsync();
+
+            var lessonCountsPerCourse = await _db.CourseSessions
+                .Where(cs => courseIds.Contains(cs.CourseId))
+                .GroupBy(cs => cs.CourseId)
+                .Select(g => new { CourseId = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var result = students.Select(s =>
             {
-                var user = users.FirstOrDefault(u => u.Id == id);
-                var student = students.FirstOrDefault(s => s.user_id == id);
-                var studentProgress = progresses.Where(p => p.StudentId == id).ToList();
-                var studentScores = quizScores.Where(s => s.StudentId == id).ToList();
+                var user = s.User;
+
+                var studentProgress = progresses.Where(p => p.StudentId == s.student_id).ToList();
+                var studentScores = quizScores.Where(q => q.StudentId == s.student_id).ToList();
+
+                var enrolledCourseIds = enrollments
+                    .Where(e => e.StudentId == s.student_id)
+                    .Select(e => e.CourseId)
+                    .ToList();
+                var totalLessonsForStudent = lessonCountsPerCourse
+                    .Where(lc => enrolledCourseIds.Contains(lc.CourseId))
+                    .Sum(lc => lc.Count);
 
                 return new StudentStatsDto
                 {
-                    StudentId = id,
-                    Name = user != null ? $"{user.firstname} {user.lastname}" : "Unknown",
-                    EducationLevel = student?.AcademicLevel ?? "N/A",
+                    StudentId = s.student_id,
 
-                    TotalLessons = lessonsCount,
+                    Name = user != null
+                        ? $"{user.firstname} {user.lastname}"
+                        : "Unknown",
+
+                    EducationLevel = s.AcademicLevel ?? "N/A",
+
+                    TotalLessons = totalLessonsForStudent,
+
                     CompletedLessons = studentProgress.Count(p => p.ProgressPercent >= 100),
 
-                    AvgScore = studentScores.Any() ? (decimal)studentScores.Average(s => s.Score) : 0,
+                    AvgScore = studentScores.Any()
+                        ? (decimal)studentScores.Average(x => x.Percentage)
+                        : 0,
 
-                    LastActive = studentProgress.OrderByDescending(p => p.LastWatched).Select(p => p.LastWatched).FirstOrDefault(),
+                    LastActive = studentProgress
+                        .OrderByDescending(p => p.LastWatched)
+                        .Select(p => p.LastWatched)
+                        .FirstOrDefault(),
 
                     AbsencePercentage = 0,
                     TasksPercentage = 0,
@@ -410,104 +531,12 @@ namespace grad.Controllers
             return Ok(result);
         }
 
-
-        //        [HttpGet("students/stats")]
-        // public async Task<IActionResult> GetStudentsStats()
-        //{
-        // var teacher = await GetCurrentTeacherAsync();
-        // if (teacher == null) return NotFound();
-
-        // 1. Courses of teacher
-        //  var courseIds = await _db.Courses
-        //  .Where(c => c.TeacherId == teacher.teacher_id)
-        //    .Select(c => c.Id)
-        //      .ToListAsync();
-
-        // 2. Students enrolled in those courses
-        //    var enrollments = await _db.Enrollments
-        // .Where(e => courseIds.Contains(e.CourseId))
-        //   .ToListAsync();
-
-        // var studentIds = enrollments
-        //  .Select(e => e.StudentId)
-        //.Distinct()
-        //  .ToList();
-
-        // 3. Preload data (IMPORTANT for performance)
-        // var users = await _db.Users
-        //.Where(u => studentIds.Contains(u.Id))
-        //  .ToListAsync();
-
-        //var students = await _db.Students
-        //    .Where(s => studentIds.Contains(s.user_id))
-        //      .ToListAsync();
-
-        //    var progresses = await _db.LessonProgress
-        //    .Where(lp => studentIds.Contains(lp.StudentId))
-        //      .ToListAsync();
-
-        //    var scores = await _db.StudentQuizResults
-        // .Where(q => studentIds.Contains(q.StudentId))
-        //   .ToListAsync();
-
-        // var lessonsPerCourse = await _db.CourseSessions
-        //  .Where(cs => courseIds.Contains(cs.CourseId))
-        //    .ToListAsync();
-
-        // 4. Build response
-        //  var result = studentIds.Select(id =>
-        //    {
-        //          var user = users.FirstOrDefault(u => u.Id == id);
-        //            var student = students.FirstOrDefault(s => s.user_id == id);
-
-        //              var studentProgress = progresses.Where(p => p.StudentId == id).ToList();
-        // var studentScores = scores.Where(s => s.StudentId == id).ToList();
-        //
-        //         return new StudentStatsDto
-        //           {
-        //                 StudentId = id,
-        //                   Name = user != null ? $"{user.firstname} {user.lastname}" : "",
-
-        //  EducationLevel = student?.AcademicLevel ?? "",
-        //TotalLessons = lessonsPerCourse.Count,
-
-        // CompletedLessons = studentProgress
-        //    .Count(p => p.ProgressPercent >= 100),
-
-        //  AvgScore = studentScores.Any()
-        //? studentScores.Average(s => s.Percentage)
-        //  : 0,
-
-        //LastActive = studentProgress
-        //      .OrderByDescending(p => p.LastWatched)
-        //        .Select(p => p.LastWatched)
-        //          .FirstOrDefault()
-        //    };
-        //  });
-
-        //    return Ok(result);
-        //  }
-
-        private string GetRelativeTime(DateTime date)
-        {
-            var span = DateTime.UtcNow - date;
-
-            if (span.TotalDays < 1)
-                return "Today";
-            if (span.TotalDays < 2)
-                return "Yesterday";
-            if (span.TotalDays < 7)
-                return $"{(int)span.TotalDays} days ago";
-
-            return $"{(int)(span.TotalDays / 7)} week(s) ago";
-        }
-
-
+        // GRADES
         [HttpGet("grades")]
         public async Task<IActionResult> GetGrades()
         {
             var teacher = await GetCurrentTeacherAsync();
-            if (teacher == null) return NotFound();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var courseIds = await _db.Courses
                 .Where(c => c.TeacherId == teacher.teacher_id)
@@ -525,6 +554,8 @@ namespace grad.Controllers
 
             foreach (var student in students)
             {
+                if (student.User == null) continue;
+
                 var entryTest = await _db.StudentQuizResults
                     .Where(q => q.StudentId == student.student_id)
                     .Select(q => (double?)q.Percentage)
@@ -541,14 +572,13 @@ namespace grad.Controllers
             return Ok(result);
         }
 
-
-
-
+        // LESSON STATS
+     
         [HttpGet("lessons/{lessonId}/stats")]
         public async Task<IActionResult> LessonStats(int lessonId)
         {
             var teacher = await GetCurrentTeacherAsync();
-            if (teacher == null) return NotFound();
+            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
 
             var lesson = await _db.CourseSessions
                 .Include(l => l.Course)
@@ -602,6 +632,22 @@ namespace grad.Controllers
                 Data = result
             });
         }
+
+        private string GetRelativeTime(DateTime date)
+        {
+            var span = DateTime.UtcNow - date;
+
+            if (span.TotalDays < 1)
+                return "Today";
+            if (span.TotalDays < 2)
+                return "Yesterday";
+            if (span.TotalDays < 7)
+                return $"{(int)span.TotalDays} days ago";
+
+            return $"{(int)(span.TotalDays / 7)} week(s) ago";
+        }
+
+
         public class CreateCourseDto
         {
             public string Title { get; set; }
@@ -638,15 +684,17 @@ namespace grad.Controllers
             public string Text { get; set; }
             public bool IsCorrect { get; set; }
         }
+
         public class TeacherStudentDto
         {
-            public string Code { get; set; }        
+            public string Code { get; set; }
             public string StudentName { get; set; }
             public string EducationLevel { get; set; }
             public string LessonsCompleted { get; set; }
             public double AvgScore { get; set; }
             public string LastActive { get; set; }
         }
+
         public class StudentGradesDto
         {
             public string StudentName { get; set; }
@@ -663,18 +711,5 @@ namespace grad.Controllers
             public string EntryTest { get; set; }
             public string Homework { get; set; }
         }
-
-      //  public class StudentStatsDto
-      //  {
-        //    public Guid StudentId { get; set; }
-           // public string Name { get; set; }
-          //  public string EducationLevel { get; set; }
-
-         //   public int TotalLessons { get; set; }
-          //  public int CompletedLessons { get; set; }
-
-          //  public decimal AvgScore { get; set; }
-          //  public DateTime? LastActive { get; set; }
-       // }
     }
 }

@@ -63,7 +63,7 @@ public class StudentAuthController : ControllerBase
         {
             student_id = Guid.NewGuid(),
             user_id = user.Id,
-            parent_email = req.ParentEmail
+            ParentPhoneNumber = req.ParentPhoneNumber
         };
         _db.Students.Add(student);
         await _db.SaveChangesAsync();
@@ -196,7 +196,7 @@ public class StudentAuthController : ControllerBase
             {
                 student_id = Guid.NewGuid(),
                 user_id = user.Id,
-                parent_email = email
+                ParentPhoneNumber = ""
             };
             _db.Students.Add(student);
             await _db.SaveChangesAsync();

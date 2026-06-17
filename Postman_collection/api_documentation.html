@@ -1,0 +1,2401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Documentation — Grad Platform</title>
+<style>
+  :root {
+    --primary: #4f46e5;
+    --primary-light: #eef2ff;
+    --secondary: #0f172a;
+    --accent: #06b6d4;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --code-bg: #1e293b;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+  /* LAYOUT */
+  .layout { display: flex; min-height: 100vh; }
+  nav { width: 280px; background: var(--secondary); color: #cbd5e1; flex-shrink: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  main { flex: 1; padding: 2rem 3rem; max-width: 1100px; }
+
+  /* NAV */
+  .nav-brand { padding: 1.5rem; border-bottom: 1px solid #334155; }
+  .nav-brand h1 { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
+  .nav-brand p { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+  .nav-section { padding: 0.75rem 1rem 0.25rem; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #475569; }
+  nav a { display: block; padding: 0.4rem 1rem 0.4rem 1.25rem; font-size: 0.82rem; color: #94a3b8; text-decoration: none; border-left: 2px solid transparent; transition: all .15s; }
+  nav a:hover { color: #f1f5f9; background: #1e293b; border-left-color: var(--primary); }
+  nav a.sub { padding-left: 2rem; font-size: 0.78rem; }
+
+  /* HEADER */
+  .page-header { margin-bottom: 2.5rem; }
+  .page-header h1 { font-size: 2rem; font-weight: 800; color: var(--secondary); }
+  .page-header p { color: var(--muted); margin-top: .5rem; font-size: 1rem; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; letter-spacing: .04em; }
+  .tag-auth { background: #fef3c7; color: #92400e; }
+  .tag-jwt { background: var(--primary-light); color: var(--primary); }
+  .tag-admin { background: #fee2e2; color: #991b1b; }
+  .tag-moderator { background: #f3e8ff; color: #6b21a8; }
+  .tag-teacher { background: #d1fae5; color: #065f46; }
+  .tag-student { background: #e0f2fe; color: #0369a1; }
+
+  /* SECTION */
+  .section { margin-bottom: 3rem; scroll-margin-top: 1rem; }
+  .section-title { font-size: 1.4rem; font-weight: 700; color: var(--secondary); padding-bottom: .5rem; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; display: flex; align-items: center; gap: .75rem; }
+
+  /* ENDPOINT CARD */
+  .endpoint { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem; overflow: hidden; }
+  .endpoint-header { display: flex; align-items: center; gap: 1rem; padding: .85rem 1.25rem; cursor: pointer; user-select: none; }
+  .endpoint-header:hover { background: #f1f5f9; }
+  .method { font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 4px; min-width: 52px; text-align: center; letter-spacing: .05em; }
+  .GET    { background: #d1fae5; color: #065f46; }
+  .POST   { background: #dbeafe; color: #1e40af; }
+  .PUT    { background: #fef3c7; color: #92400e; }
+  .PATCH  { background: #e0e7ff; color: #3730a3; }
+  .DELETE { background: #fee2e2; color: #991b1b; }
+  .endpoint-path { font-family: 'Consolas', monospace; font-size: 0.88rem; font-weight: 600; color: var(--secondary); }
+  .endpoint-desc { margin-left: auto; font-size: 0.8rem; color: var(--muted); }
+  .endpoint-body { border-top: 1px solid var(--border); padding: 1.25rem; display: none; }
+  .endpoint.open .endpoint-body { display: block; }
+
+  /* FIELDS */
+  .field-grid { display: grid; grid-template-columns: 180px 90px 1fr; gap: .25rem; font-size: 0.82rem; margin-top: .5rem; }
+  .field-grid .header { font-weight: 700; color: var(--muted); font-size: 0.75rem; padding-bottom: .25rem; }
+  .field-name { font-family: monospace; color: var(--primary); }
+  .field-type { color: var(--muted); }
+  .req { color: var(--danger); font-size: 0.7rem; }
+  .opt { color: var(--muted); font-size: 0.7rem; }
+
+  /* BADGES */
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 0.7rem; font-weight: 600; }
+  .badge-req { background: #fecaca; color: #7f1d1d; }
+  .badge-opt { background: #e2e8f0; color: #475569; }
+  .badge-jwt { background: var(--primary-light); color: var(--primary); }
+
+  /* CODE BLOCKS */
+  pre { background: var(--code-bg); color: #e2e8f0; border-radius: var(--radius); padding: 1rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.6; margin-top: .5rem; }
+  code { font-family: 'Consolas', 'Courier New', monospace; }
+  .inline-code { background: #f1f5f9; border: 1px solid var(--border); padding: 1px 5px; border-radius: 3px; font-size: 0.82rem; font-family: monospace; }
+
+  /* LABELS */
+  .label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 1rem; margin-bottom: .35rem; }
+  .response-200 { border-left: 3px solid var(--success); background: #f0fdf4; padding: .6rem 1rem; border-radius: 0 4px 4px 0; margin-top: .5rem; font-size: .82rem; }
+  .response-400 { border-left: 3px solid var(--danger); background: #fef2f2; padding: .6rem 1rem; border-radius: 0 4px 4px 0; margin-top: .5rem; font-size: .82rem; }
+  .response-401 { border-left: 3px solid var(--warning); background: #fffbeb; padding: .6rem 1rem; border-radius: 0 4px 4px 0; margin-top: .5rem; font-size: .82rem; }
+  .response-403 { border-left: 3px solid #f97316; background: #fff7ed; padding: .6rem 1rem; border-radius: 0 4px 4px 0; margin-top: .5rem; font-size: .82rem; }
+  .response-404 { border-left: 3px solid #8b5cf6; background: #f5f3ff; padding: .6rem 1rem; border-radius: 0 4px 4px 0; margin-top: .5rem; font-size: .82rem; }
+
+  /* TEST CASES */
+  .test-case { border: 1px solid var(--border); border-radius: 6px; margin-top: .75rem; overflow: hidden; }
+  .test-case-header { background: #f8fafc; padding: .5rem 1rem; font-size: .78rem; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: .5rem; }
+  .test-case-body { padding: .75rem 1rem; font-size: .8rem; }
+  .tc-pass { color: var(--success); }
+  .tc-fail { color: var(--danger); }
+
+  /* INFO BOX */
+  .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: .875rem; }
+  .info-box strong { color: var(--primary); }
+
+  /* DIVIDER */
+  hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+
+  @media print { nav { display: none; } main { max-width: 100%; padding: 1rem; } }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR NAV -->
+<nav>
+  <div class="nav-brand">
+    <h1>📚 Grad API Docs</h1>
+    <p>v1.0 · ASP.NET Core / .NET 9</p>
+  </div>
+  <div class="nav-section">Authentication</div>
+  <a href="#auth">Shared Auth</a>
+  <a href="#admin-auth" class="sub">Admin Login</a>
+  <a href="#teacher-auth" class="sub">Teacher Login</a>
+  <a href="#moderator-auth" class="sub">Moderator Login</a>
+  <a href="#student-auth" class="sub">Student Auth</a>
+  <div class="nav-section">Admin</div>
+  <a href="#admin-overview">Overview</a>
+  <a href="#admin-teachers">Teachers</a>
+  <a href="#admin-moderators">Moderators</a>
+  <a href="#admin-reports">Reports & Settings</a>
+  <div class="nav-section">Moderator</div>
+  <a href="#mod-dashboard">Dashboard</a>
+  <a href="#mod-students">Students</a>
+  <a href="#mod-teachers">Teachers</a>
+  <a href="#mod-messages">Messages</a>
+  <a href="#mod-absences">Absences</a>
+  <div class="nav-section">Teacher</div>
+  <a href="#teacher-dashboard">Dashboard</a>
+  <a href="#teacher-subjects">Subjects / Lessons</a>
+  <a href="#teacher-students">Student Stats</a>
+  <a href="#teacher-requests">Requests</a>
+  <div class="nav-section">Student</div>
+  <a href="#student-home">Home & Profile</a>
+  <a href="#student-subjects">Subjects</a>
+  <a href="#student-lessons">Lessons & Quizzes</a>
+  <a href="#student-tasks">Tasks</a>
+  <a href="#student-notifications">Notifications</a>
+  <a href="#student-messages">Messages</a>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+<div class="page-header">
+  <h1>Grad Platform — API Documentation</h1>
+  <p>Full reference for all REST endpoints including request/response shapes and test cases.</p>
+</div>
+
+<div class="info-box">
+  <strong>Base URL:</strong> All routes are relative to your server root, e.g. <span class="inline-code">https://api.example.com/api/…</span><br>
+  <strong>Authentication:</strong> Protected endpoints require an <span class="inline-code">Authorization: Bearer &lt;JWT&gt;</span> header.<br>
+  <strong>Content-Type:</strong> All request bodies must be <span class="inline-code">application/json</span>.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SHARED AUTH -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="auth">
+  <div class="section-title"><span class="tag tag-auth">AUTH</span> Shared Auth — <code>/api/auth</code></div>
+
+  <!-- GET /api/auth/me -->
+  <div class="endpoint open" id="ep-me">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/auth/me</span>
+      <span class="endpoint-desc">Get the current logged-in user's profile</span>
+    </div>
+    <div class="endpoint-body">
+      <span class="badge badge-jwt">🔒 JWT Required</span>
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "id": "guid",
+  "firstname": "string",
+  "lastname": "string",
+  "email": "string",
+  "language_pref": "string",
+  "device_id": "string",
+  "student": { "parent_email": "string", "academicLevel": "string", "academicYear": 0 } | null,
+  "teacher": { "subject": "string", "is_approved": true } | null
+}</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Valid JWT (Student)</div>
+        <div class="test-case-body">Send request with a valid student JWT → 200 with <code>student</code> populated, <code>teacher</code> null.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Valid JWT (Teacher)</div>
+        <div class="test-case-body">Send with a valid teacher JWT → 200 with <code>teacher</code> populated, <code>student</code> null.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — No token</div>
+        <div class="test-case-body">Omit Authorization header → 401 Unauthorized.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PUT /api/auth/update -->
+  <div class="endpoint" id="ep-update">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/auth/update</span>
+      <span class="endpoint-desc">Update profile (shared for all roles)</span>
+    </div>
+    <div class="endpoint-body">
+      <span class="badge badge-jwt">🔒 JWT Required</span>
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">FirstName</span><span class="field-type">string?</span><span>Optional</span>
+        <span class="field-name">LastName</span><span class="field-type">string?</span><span>Optional</span>
+        <span class="field-name">LanguagePref</span><span class="field-type">string?</span><span>e.g. "en", "ar"</span>
+        <span class="field-name">DeviceId</span><span class="field-type">string?</span><span>Push token</span>
+        <span class="field-name">Password</span><span class="field-type">string?</span><span>New password (optional)</span>
+        <span class="field-name">AcademicLevel</span><span class="field-type">string?</span><span>Students only</span>
+        <span class="field-name">AcademicYear</span><span class="field-type">int?</span><span>Students only</span>
+        <span class="field-name">ParentEmail</span><span class="field-type">string?</span><span>Students only</span>
+        <span class="field-name">Subject</span><span class="field-type">string?</span><span>Teachers only</span>
+      </div>
+      <div class="label">Responses</div>
+      <div class="response-200">200 — <code>{ "message": "Profile updated successfully" }</code></div>
+      <div class="response-401">401 — Missing/invalid JWT</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Update first name only</div>
+        <div class="test-case-body">Body: <code>{"FirstName":"Ahmed"}</code> → 200, only first name changed.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Change password</div>
+        <div class="test-case-body">Body: <code>{"Password":"NewPass@123"}</code> → 200, subsequent login uses new password.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — No token</div>
+        <div class="test-case-body">→ 401 Unauthorized.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POST forgot/reset password -->
+  <div class="endpoint" id="ep-forgot">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/auth/forgot-password</span>
+      <span class="endpoint-desc">Request password reset token</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Email</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="label">Responses</div>
+      <div class="response-200">200 — <code>{ "message": "Password reset link sent if email exists." }</code> (always 200 to prevent enumeration)</div>
+      <div class="response-400">400 — Email field is empty</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Existing email</div>
+        <div class="test-case-body">→ 200. Token generated (logged to console; email sending pending).</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Non-existent email</div>
+        <div class="test-case-body">→ 200 (same message — no user enumeration).</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Empty body</div>
+        <div class="test-case-body">→ 400 "Email is required."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint" id="ep-reset">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/auth/reset-password</span>
+      <span class="endpoint-desc">Apply a password reset token</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Email</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Token</span><span class="field-type">string</span><span><span class="badge badge-req">required</span> from forgot-password</span>
+        <span class="field-name">NewPassword</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="label">Responses</div>
+      <div class="response-200">200 — <code>{ "message": "Password has been reset successfully." }</code></div>
+      <div class="response-400">400 — Invalid token or missing fields</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Valid token & new password</div>
+        <div class="test-case-body">→ 200. Can now log in with new password.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Expired/wrong token</div>
+        <div class="test-case-body">→ 400 with error descriptions from Identity.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ADMIN AUTH -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="admin-auth">
+  <div class="section-title"><span class="tag tag-admin">ADMIN</span> Admin Login — <code>/api/admin/login</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/admin/login</span>
+      <span class="endpoint-desc">Admin email + password → JWT</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Email</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Password</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "token": "eyJ...",
+  "id": "guid",
+  "firstname": "string",
+  "lastname": "string",
+  "email": "string"
+}</code></pre>
+      <div class="response-400">400 — Email/password missing</div>
+      <div class="response-401">401 — Invalid credentials or not an admin</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Valid admin credentials</div>
+        <div class="test-case-body">→ 200 with JWT. Token includes role = "Admin".</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Teacher email used</div>
+        <div class="test-case-body">→ 401 "You are not an admin."</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Wrong password</div>
+        <div class="test-case-body">→ 401 "Invalid credentials."</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Teacher Auth -->
+<div class="section" id="teacher-auth">
+  <div class="section-title"><span class="tag tag-teacher">TEACHER</span> Teacher Login — <code>/api/auth/teacher</code></div>
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/auth/teacher/login</span>
+      <span class="endpoint-desc">Teacher email + password → JWT</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Email</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Password</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "token": "eyJ...",
+  "userId": "guid",
+  "role": "Teacher",
+  "firstname": "string",
+  "lastname": "string",
+  "email": "string",
+  "center": { "adminId": "guid", "name": "string" }
+}</code></pre>
+      <div class="response-401">401 — Invalid credentials, not a teacher, or account not approved</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Approved teacher</div>
+        <div class="test-case-body">→ 200 with JWT and center info.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Unapproved teacher</div>
+        <div class="test-case-body">→ 401 "Your account is pending admin approval."</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Student uses teacher endpoint</div>
+        <div class="test-case-body">→ 401 "Invalid credentials."</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Moderator Auth -->
+<div class="section" id="moderator-auth">
+  <div class="section-title"><span class="tag tag-moderator">MODERATOR</span> Moderator Login — <code>/api/auth/moderator</code></div>
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/auth/moderator/login</span>
+      <span class="endpoint-desc">Moderator email + password → JWT</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Email</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Password</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "token": "eyJ...",
+  "userId": "guid",
+  "role": "Moderator",
+  "firstname": "string",
+  "lastname": "string",
+  "email": "string"
+}</code></pre>
+      <div class="response-400">400 — Missing fields</div>
+      <div class="response-401">401 — Not a moderator or wrong password</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Valid moderator credentials</div>
+        <div class="test-case-body">→ 200 with JWT.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Empty email</div>
+        <div class="test-case-body">→ 400 "Email and password are required."</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Student Auth -->
+<div class="section" id="student-auth">
+  <div class="section-title"><span class="tag tag-student">STUDENT</span> Student Auth — <code>/api/auth/student</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/auth/student/register</span>
+      <span class="endpoint-desc">Register a new student account</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">FirstName</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">LastName</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Email</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Password</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">ParentEmail</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">LanguagePref</span><span class="field-type">string?</span><span>e.g. "en"</span>
+        <span class="field-name">DeviceId</span><span class="field-type">string?</span><span>Push notification token</span>
+      </div>
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "message": "Student registered successfully",
+  "username": "ahmed.ali.1234",
+  "userId": "guid",
+  "token": "eyJ..."
+}</code></pre>
+      <div class="response-400">400 — Email already registered or identity validation failed</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Valid new registration</div>
+        <div class="test-case-body">→ 200 with auto-generated unique username and JWT.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Duplicate email</div>
+        <div class="test-case-body">→ 400 "Email already exists."</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Weak password</div>
+        <div class="test-case-body">→ 400 with Identity password complexity errors.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/auth/student/login</span>
+      <span class="endpoint-desc">Student username + password → JWT</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Username</span><span class="field-type">string</span><span><span class="badge badge-req">required</span> (not email)</span>
+        <span class="field-name">Password</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "token": "eyJ...",
+  "username": "string",
+  "fullName": "string"
+}</code></pre>
+      <div class="response-401">401 — Invalid username/password or not a student</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Correct credentials</div>
+        <div class="test-case-body">→ 200 with JWT.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Email used instead of username</div>
+        <div class="test-case-body">→ 401 "Invalid Username or Password."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/auth/student/google-login</span>
+      <span class="endpoint-desc">Initiate Google OAuth flow</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:.85rem;color:var(--muted)">Redirects the browser to Google's OAuth consent screen. On success, redirects to <span class="inline-code">google-response</span>.</p>
+      <div class="label">Response 200 (after callback)</div>
+      <pre><code>{
+  "token": "eyJ...",
+  "userId": "guid",
+  "role": "Student",
+  "firstname": "string",
+  "lastname": "string",
+  "email": "string"
+}</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — New Google user</div>
+        <div class="test-case-body">User authorizes → account created automatically → 200 JWT.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Returning Google user</div>
+        <div class="test-case-body">Existing Google-linked account → 200 JWT, no duplicate created.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ADMIN SECTION -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="admin-overview">
+  <div class="section-title"><span class="tag tag-admin">ADMIN</span> Admin Overview &amp; Reports — <code>/api/admin</code></div>
+  <div class="info-box"><strong>Authorization:</strong> All <code>/api/admin</code> endpoints require a JWT with role <strong>Admin</strong>.</div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/admin/overview</span>
+      <span class="endpoint-desc">Dashboard summary statistics</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "totalTeachers": 12,
+  "totalModerators": 3,
+  "totalStudents": 240,
+  "totalCourses": 45,
+  "approvedTeachers": 10,
+  "pendingTeachers": 2,
+  "enrollmentBySubject": [ { "subject": ..., "students": 30 } ],
+  "recentActivities": [ { "id": 1, "text": "Teacher Ali created", "time": "..." } ]
+}</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Admin with data</div>
+        <div class="test-case-body">→ 200 with populated counts. <code>recentActivities</code> limited to 10 items.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Non-admin JWT</div>
+        <div class="test-case-body">→ 403 Forbidden.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/admin/reports</span>
+      <span class="endpoint-desc">Enrollment, students-per-teacher, and subject pass-rate charts</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "enrollmentBySubject": [ ... ],
+  "studentsPerTeacher": [ { "name": "Ali Hassan", "value": 35 } ],
+  "subjectPassRates": [ { "subject": courseId, "teachers": [ { "name": "...", "courseTitle": "...", "sessionCount": 5 } ] } ]
+}</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Reports with existing data</div>
+        <div class="test-case-body">→ 200. <code>studentsPerTeacher</code> only includes teachers with at least one course.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/admin/settings</span>
+      <span class="endpoint-desc">Get admin institution settings</span>
+    </div>
+    <div class="endpoint-body">
+      <pre><code>{
+  "institutionName": "string",
+  "contactEmail": "string",
+  "address": "string",
+  "phone": "string",
+  "subscription": { "plan": "string", "expires": "datetime" }
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/admin/settings</span>
+      <span class="endpoint-desc">Update admin institution settings</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body (all fields optional)</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">firstname</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">lastname</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">contactEmail</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">address</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">phone</span><span class="field-type">string?</span><span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Settings updated." }</code></div>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Teachers -->
+<div class="section" id="admin-teachers">
+  <div class="section-title"><span class="tag tag-admin">ADMIN</span> Teacher Management — <code>/api/admin</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/admin/AllTeachers</span>
+      <span class="endpoint-desc">List all teachers under this admin</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "id": "guid",          // user ID
+  "teacherId": "guid",
+  "firstname": "string",
+  "lastname": "string",
+  "email": "string",
+  "subject": "string",
+  "is_approved": true,
+  "courseCount": 5,
+  "adminName": "string"
+}</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Admin with 3 teachers</div>
+        <div class="test-case-body">→ 200 with array of 3 teacher objects including <code>courseCount</code>.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — New admin (no teachers)</div>
+        <div class="test-case-body">→ 200 empty array.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/admin/AddTeachers</span>
+      <span class="endpoint-desc">Create a new teacher account</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">firstname</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">lastname</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">email</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">password</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">subject</span><span class="field-type">string?</span><span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Teacher created successfully.", "id": "guid" }</code></div>
+      <div class="response-400">400 — Email already exists or identity errors</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Valid teacher</div>
+        <div class="test-case-body">→ 200. Teacher approved by default (<code>is_approved=true</code>). Activity log created.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Duplicate email</div>
+        <div class="test-case-body">→ 400 "Email already exists."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/admin/UpdateTeachers/{id}</span>
+      <span class="endpoint-desc">Update a teacher by user ID</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Path Parameter</div>
+      <p style="font-size:.82rem"><code>id</code> — Teacher's user GUID</p>
+      <div class="label">Request Body (all optional)</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">firstname</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">lastname</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">subject</span><span class="field-type">string?</span><span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Teacher updated successfully." }</code></div>
+      <div class="response-404">404 — Teacher not found or not under this admin</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/api/admin/DeleteTeachers/{id}</span>
+      <span class="endpoint-desc">Delete a teacher account</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "message": "Teacher deleted successfully." }</code></div>
+      <div class="response-404">404 — Teacher not found or not under this admin</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Delete existing teacher</div>
+        <div class="test-case-body">→ 200. Teacher account removed; activity log created.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Delete teacher of another admin</div>
+        <div class="test-case-body">→ 404 (scoped to admin's teachers only).</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Moderators -->
+<div class="section" id="admin-moderators">
+  <div class="section-title"><span class="tag tag-admin">ADMIN</span> Moderator Management — <code>/api/admin</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/admin/AllModerators</span>
+      <span class="endpoint-desc">List all moderators under this admin</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "id": "guid",
+  "moderator_id": "guid",
+  "firstname": "string",
+  "lastname": "string",
+  "email": "string",
+  "students_managed": 0,
+  "last_active": "datetime",
+  "assigned_teacher_ids": ["guid"],
+  "admin_name": "string"
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/admin/AddModerators</span>
+      <span class="endpoint-desc">Create a moderator and optionally assign teachers</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">firstname</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">lastname</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">email</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">password</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">assigned_teacher_ids</span><span class="field-type">Guid[]?</span><span>Teacher user IDs to assign</span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Moderator created successfully.", "id": "guid" }</code></div>
+      <div class="response-400">400 — Duplicate email</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Create with teacher assignments</div>
+        <div class="test-case-body">→ 200. ModeratorTeacher links created; assigned teachers' <code>ModeratorId</code> updated.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Create without assignments</div>
+        <div class="test-case-body">→ 200. <code>assigned_teacher_ids</code> null is fine.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/admin/UpdateModerators/{id}</span>
+      <span class="endpoint-desc">Update moderator info and/or reassign teachers</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body (all optional)</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">firstname</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">lastname</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">assigned_teacher_ids</span><span class="field-type">Guid[]?</span><span>Replaces current assignments</span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Moderator updated successfully." }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/api/admin/DeleteModerators/{id}</span>
+      <span class="endpoint-desc">Delete a moderator account and their teacher assignments</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "message": "Moderator deleted successfully." }</code></div>
+      <div class="response-404">404 — Moderator not found</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- MODERATOR -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="mod-dashboard">
+  <div class="section-title"><span class="tag tag-moderator">MODERATOR</span> Dashboard — <code>/api/moderator</code></div>
+  <div class="info-box"><strong>Authorization:</strong> All <code>/api/moderator</code> endpoints require role <strong>Moderator</strong>.</div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/dashboard</span>
+      <span class="endpoint-desc">Dashboard summary for the logged-in moderator</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "totalStudents": 120,
+  "totalTeachers": 5,
+  "totalCourses": 18,
+  "totalEnrollments": 340,
+  "recentStudents": [ { "student_id": "...", "name": "...", "email": "...", "academicLevel": "...", "academicYear": 1 } ],
+  "pendingRequests": 7,
+  "newThisMonth": 12,
+  "assignedTeachersList": [ { "teacher_id": "...", "fullName": "...", "subject": "...", "initials": "AH" } ],
+  "chartData": [ { "teacherName": "...", "studentCount": 30 } ]
+}</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Active moderator</div>
+        <div class="test-case-body">→ 200 with all counts populated.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Moderator with no assigned teachers</div>
+        <div class="test-case-body">→ 200 with zero counts and empty arrays.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/my-students</span>
+      <span class="endpoint-desc">All students assigned to this moderator's teachers</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "studentId": "guid",
+  "fullName": "string",
+  "educationLevel": "Secondary - 2",
+  "assignedTeachers": ["Ali Hassan"],
+  "subjects": ["Math"],
+  "avgScore": 85.5,
+  "missingDays": 2,
+  "joined": "Apr 01, 2026"
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/my-teachers</span>
+      <span class="endpoint-desc">Teachers assigned to this moderator</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "teacherId": "guid",
+  "userId": "guid",
+  "fullName": "string",
+  "email": "string",
+  "subject": "string",
+  "isApproved": true,
+  "studentCount": 40
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/enrollment-records</span>
+      <span class="endpoint-desc">All enrollment records for this moderator's teachers</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "studentName": "string",
+  "teacherName": "string",
+  "subject": "string",
+  "dateEnrolled": "Apr 10, 2026"
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/all-students-stats</span>
+      <span class="endpoint-desc">Statistics (absences, tasks, quizzes) for all students</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "studentId": "guid",
+  "firstName": "string",
+  "lastName": "string",
+  "fullName": "string",
+  "absence": 3,
+  "tasks": 10,
+  "quiz": 7
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/activity-timeline</span>
+      <span class="endpoint-desc">Recent 15 activity log entries for this moderator</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{ "text": "Student Ahmed created", "timeDisplay": "5 minutes ago" }</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Mod Students -->
+<div class="section" id="mod-students">
+  <div class="section-title"><span class="tag tag-moderator">MODERATOR</span> Student CRUD — <code>/api/moderator/students</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/students</span>
+      <span class="endpoint-desc">Search and filter all students</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Query Parameters</div>
+      <div class="field-grid">
+        <span class="header">Param</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">search</span><span class="field-type">string?</span><span>Filter by name or email</span>
+        <span class="field-name">academicLevel</span><span class="field-type">string?</span><span>Filter by level</span>
+      </div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — search=Ahmed</div>
+        <div class="test-case-body">→ 200 with students whose name contains "Ahmed" (case-insensitive).</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — No filters</div>
+        <div class="test-case-body">→ 200 all students.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}</span>
+      <span class="endpoint-desc">Full student detail with enrollments, quiz results, and stats</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "student_id": "guid",
+  "name": "string",
+  "email": "string",
+  "username": "string",
+  "phoneNumber": "string",
+  "academicLevel": "string",
+  "academicYear": 2,
+  "parentPhone": "string",
+  "assignedTeachers": [ { "teacher_id": "...", "name": "...", "subject": "..." } ],
+  "statistics": { "absence": 2, "tasks": 8, "quiz": 5 },
+  "enrollments": [ { "courseId": 1, "courseTitle": "...", "teacherName": "...", "progress": 60, "enrolledAt": "..." } ],
+  "quizResults": [ { "quizTitle": "...", "score": 7, "totalQuestions": 10, "percentage": 70, "passed": true, "submittedAt": "..." } ]
+}</code></pre>
+      <div class="response-404">404 — Student not found</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/moderator/students</span>
+      <span class="endpoint-desc">Create a new student (with auto-generated credentials)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body (CreateStudentRequestDto)</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">FirstName</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">LastName</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Email</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">ParentEmail</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">AcademicLevel</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">AcademicYear</span><span class="field-type">int?</span><span></span>
+        <span class="field-name">TeacherIds</span><span class="field-type">Guid[]?</span><span>Teachers to assign</span>
+      </div>
+      <div class="label">Response 200 — Credentials object</div>
+      <pre><code>{ "username": "ahmed.ali.1234", "password": "auto-generated", "email": "..." }</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Valid student with teachers</div>
+        <div class="test-case-body">→ 200 with generated credentials. Student linked to teachers.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Duplicate email</div>
+        <div class="test-case-body">→ 400 with message from StudentService.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}</span>
+      <span class="endpoint-desc">Update student details</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body (all optional)</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">FirstName</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">LastName</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">Email</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">ParentPhoneNumber</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">AcademicLevel</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">AcademicYear</span><span class="field-type">int?</span><span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Student updated." }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}</span>
+      <span class="endpoint-desc">Delete a student account</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "message": "Student deleted." }</code></div>
+      <div class="response-404">404 — Student not found</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/enroll</span>
+      <span class="endpoint-desc">Enroll student in a course + send notification</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">CourseId</span><span class="field-type">int</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Student enrolled successfully." }</code></div>
+      <div class="response-400">400 — Already enrolled</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — First enrollment</div>
+        <div class="test-case-body">→ 200. Enrollment record created + notification sent to student.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Duplicate enrollment</div>
+        <div class="test-case-body">→ 400 "Student already enrolled."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/enroll/{courseId}</span>
+      <span class="endpoint-desc">Unenroll student from a course</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "message": "Student unenrolled." }</code></div>
+      <div class="response-404">404 — Enrollment not found</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/reset-password</span>
+      <span class="endpoint-desc">Directly reset a student's password</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">NewPassword</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Password reset successfully." }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/teachers</span>
+      <span class="endpoint-desc">Assign/replace teachers for a student</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">TeacherIds</span><span class="field-type">Guid[]</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Teachers assigned successfully." }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/teachers</span>
+      <span class="endpoint-desc">List teachers assigned to a student</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{ "teacher_id": "guid", "name": "string", "subject": "string", "email": "string" }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/notify</span>
+      <span class="endpoint-desc">Send a push notification to a student</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Title</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Body</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Type</span><span class="field-type">string?</span><span>defaults to "general"</span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Notification sent." }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/student-stats/{studentId}</span>
+      <span class="endpoint-desc">Quick absence/task/quiz counts for a student</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{ "studentId": "guid", "absence": 3, "tasks": 10, "quiz": 7 }</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Mod Absences -->
+<div class="section" id="mod-absences">
+  <div class="section-title"><span class="tag tag-moderator">MODERATOR</span> Absence Management</div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/absences</span>
+      <span class="endpoint-desc">Record one absence event for a student</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">AbsenceDate</span><span class="field-type">datetime?</span><span>ISO-8601. Defaults to today UTC</span>
+        <span class="field-name">Note</span><span class="field-type">string?</span><span>e.g. "sick leave"</span>
+      </div>
+      <div class="label">Response 200</div>
+      <pre><code>{ "message": "Absence recorded.", "absenceId": 42, "totalAbsence": 4 }</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Record with date and note</div>
+        <div class="test-case-body">→ 200. <code>totalAbsence</code> incremented by 1.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Record without date</div>
+        <div class="test-case-body">→ 200. Date defaults to now (UTC).</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Non-existent student</div>
+        <div class="test-case-body">→ 404 "Student not found."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/absences/{absenceId}</span>
+      <span class="endpoint-desc">Remove an absence record</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "message": "Absence record deleted.", "totalAbsence": 3 }</code></div>
+      <div class="response-404">404 — Absence not found for this student</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/absences-report</span>
+      <span class="endpoint-desc">Auto-computed absence report from lesson progress</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{ "sessionTitle": "string", "progress": 45.5, "status": "Attended" | "Absent" }</code></pre>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:.5rem">A session is "Absent" if progress ≤ 20%. Sessions watched >20% are "Attended".</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/students/{studentId}/watch-progress</span>
+      <span class="endpoint-desc">Detailed watch progress per lesson</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{ "lessonName": "string", "percentage": 72.5, "lastSeen": "datetime" }</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Mod Messages -->
+<div class="section" id="mod-messages">
+  <div class="section-title"><span class="tag tag-moderator">MODERATOR</span> Messaging — <code>/api/moderator/messages</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/messages/contacts</span>
+      <span class="endpoint-desc">Contact list (students who have messaged this moderator)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "studentId": "guid",
+  "fullName": "string",
+  "avatarInitials": "AH",
+  "lastMessage": "Hello...",
+  "lastMessageAt": "datetime",
+  "timeAgo": "5m ago",
+  "unreadCount": 3
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/moderator/messages/{studentId}</span>
+      <span class="endpoint-desc">Full chat thread with a student (marks unread as read)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "id": 1,
+  "senderId": "guid",
+  "senderName": "string",
+  "isFromModerator": false,
+  "content": "string",
+  "sentAt": "datetime",
+  "timeAgo": "2h ago",
+  "isRead": true
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/moderator/messages/{studentId}</span>
+      <span class="endpoint-desc">Send a message to a student</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Content</span><span class="field-type">string</span><span><span class="badge badge-req">required</span> non-empty</span>
+      </div>
+      <div class="response-200">200 — The sent ChatMessageDto</div>
+      <div class="response-400">400 — Empty content</div>
+      <div class="response-404">404 — Student user not found</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Valid message</div>
+        <div class="test-case-body">→ 200 with the new message DTO (<code>isFromModerator: true</code>, <code>timeAgo: "Just now"</code>).</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Empty content</div>
+        <div class="test-case-body">→ 400 "Message content cannot be empty."</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- TEACHER -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="teacher-dashboard">
+  <div class="section-title"><span class="tag tag-teacher">TEACHER</span> Dashboard — <code>/api/teacher</code></div>
+  <div class="info-box"><strong>Authorization:</strong> All <code>/api/teacher</code> endpoints require role <strong>Teacher</strong>.</div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/teacher/dashboard</span>
+      <span class="endpoint-desc">Teacher dashboard summary</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "teacherName": "string",
+  "totalSubjects": 5,
+  "totalStudents": 120,
+  "totalSessions": 40,
+  "pendingRequests": 3,
+  "studentActivityLast30Days": [ { "date": "2026-04-01", "count": 12 } ]
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/teacher/grades</span>
+      <span class="endpoint-desc">Average quiz grades for all students</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{ "studentName": "string", "entryTest": 78.0, "overall": 78.0 }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/teacher/students/stats</span>
+      <span class="endpoint-desc">Per-student progress and score statistics</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of StudentStatsDto:</div>
+      <pre><code>{
+  "studentId": "guid",
+  "name": "string",
+  "educationLevel": "string",
+  "totalLessons": 20,
+  "completedLessons": 14,
+  "avgScore": 8.5,
+  "lastActive": "datetime"
+}</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Teacher Subjects -->
+<div class="section" id="teacher-subjects">
+  <div class="section-title"><span class="tag tag-teacher">TEACHER</span> Subjects &amp; Lessons — <code>/api/teacher</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/teacher/subjects</span>
+      <span class="endpoint-desc">List all courses for this teacher</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{ "id": 1, "title": "string", "academicLevel": "string", "academicYear": 2, "sessionsCount": 8, "studentsCount": 45 }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/teacher/subjects/{courseId}</span>
+      <span class="endpoint-desc">Course detail with all sessions and entry tests</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "id": 1, "title": "string", "academicLevel": "string", "academicYear": 2,
+  "sessions": [
+    {
+      "id": 10, "title": "Lesson 1", "attachmentUrl": "...", "availableDays": 7,
+      "maxViews": 3, "homeworkUrl": "...", "hasEntryTest": true,
+      "entryTest": { "id": 5, "title": "Quiz 1", "passingScore": 70 }
+    }
+  ]
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/teacher/subjects</span>
+      <span class="endpoint-desc">Create a new course/subject</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Title</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">AcademicLevel</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">AcademicYear</span><span class="field-type">int</span><span><span class="badge badge-req">required</span></span>
+      </div>
+      <div class="response-200">200 — The created Course object</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/teacher/subjects/{courseId}</span>
+      <span class="endpoint-desc">Update a course</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body — same as Create</div>
+      <div class="response-200">200 — <code>{ "message": "Updated", "subject": { ... } }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/api/teacher/subjects/{courseId}</span>
+      <span class="endpoint-desc">Delete a course</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "message": "Deleted" }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/teacher/subjects/{courseId}/lessons</span>
+      <span class="endpoint-desc">Add a lesson/session to a course</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Title</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">AttachmentUrl</span><span class="field-type">string?</span><span>Video/file URL</span>
+        <span class="field-name">AvailableDays</span><span class="field-type">int</span><span>Days the content is accessible</span>
+        <span class="field-name">MaxViews</span><span class="field-type">int</span><span>Max allowed watch count</span>
+        <span class="field-name">HomeworkUrl</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">HasEntryTest</span><span class="field-type">bool</span><span></span>
+      </div>
+      <div class="response-200">200 — The created CourseSession object</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Add lesson with homework</div>
+        <div class="test-case-body">→ 200 with session object. <code>hasEntryTest: false</code> → no quiz needed.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — CourseId not owned by teacher</div>
+        <div class="test-case-body">→ 404.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/teacher/lessons/{lessonId}</span>
+      <span class="endpoint-desc">Update a lesson</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body — same as AddLesson (any field nullable)</div>
+      <div class="response-200">200 — <code>{ "message": "CourseSession updated" }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/api/teacher/lessons/{lessonId}</span>
+      <span class="endpoint-desc">Delete a lesson</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "message": "CourseSession deleted" }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/teacher/lessons/{lessonId}/entry-test</span>
+      <span class="endpoint-desc">Create a quiz for a lesson</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <pre><code>{
+  "title": "Quiz 1",
+  "passingScore": 70,         // percentage
+  "retakeIntervalHours": 24,
+  "questions": [
+    {
+      "text": "What is 2+2?",
+      "options": [
+        { "text": "3", "isCorrect": false },
+        { "text": "4", "isCorrect": true },
+        { "text": "5", "isCorrect": false }
+      ]
+    }
+  ]
+}</code></pre>
+      <div class="label">Response 200</div>
+      <pre><code>{ "id": 1, "title": "Quiz 1", "passingScore": 70, "retakeIntervalHours": 24 }</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Create 5-question quiz</div>
+        <div class="test-case-body">→ 200. Quiz linked to session. Each question stores correct option.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Lesson not owned by teacher</div>
+        <div class="test-case-body">→ 404.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/teacher/lessons/{lessonId}/stats</span>
+      <span class="endpoint-desc">Per-student progress and quiz results for a lesson</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "lesson": "Lesson 1",
+  "data": [
+    {
+      "studentId": "guid",
+      "studentName": "string",
+      "views": 2,
+      "progress": 85.0,
+      "lastWatched": "datetime",
+      "entryTest": "Passed (90%)"
+    }
+  ]
+}</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Teacher Requests -->
+<div class="section" id="teacher-requests">
+  <div class="section-title"><span class="tag tag-teacher">TEACHER</span> Student Requests</div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/teacher/pending-requests</span>
+      <span class="endpoint-desc">All pending view/retake requests</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{ "student": "string", "lesson": "string", "count": 2, "reason": "string", "date": "datetime", "type": "view" | "test" }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/teacher/request/{id}/approve</span>
+      <span class="endpoint-desc">Approve a pending request</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — Empty OK</div>
+      <div class="response-404">404 — Request not found</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/teacher/request/{id}/deny</span>
+      <span class="endpoint-desc">Deny a pending request</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — Empty OK</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- STUDENT -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="section" id="student-home">
+  <div class="section-title"><span class="tag tag-student">STUDENT</span> Home &amp; Profile — <code>/api/student</code></div>
+  <div class="info-box"><strong>Authorization:</strong> All <code>/api/student</code> endpoints require role <strong>Student</strong>.</div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/home</span>
+      <span class="endpoint-desc">Dashboard home data: greeting, stats, recent courses</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "studentName": "Ahmed Ali",
+  "academicLevel": "Secondary",
+  "unreadNotifications": 3,
+  "statistics": { "absence": 1, "tasksSubmitted": 8, "quizzesTaken": 5, "overallProgress": 72 },
+  "recentCourses": [
+    {
+      "courseId": 1, "title": "Math", "teacherName": "Ali Hassan",
+      "progressPercent": 60, "totalSessions": 10, "completedSessions": 6
+    }
+  ]
+}</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Student enrolled in 3 courses</div>
+        <div class="test-case-body">→ 200. <code>recentCourses</code> shows up to 5 most-recently-enrolled. Progress is live-computed.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — New student, no enrollments</div>
+        <div class="test-case-body">→ 200. <code>recentCourses</code> empty, all stats 0.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/statistics</span>
+      <span class="endpoint-desc">Raw absence/task/quiz counters</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{ "absence": 2, "tasks": 10, "quiz": 7 }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/achievement</span>
+      <span class="endpoint-desc">Full achievement analytics including course activity</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "totalEnrolled": 5,
+  "completedCourses": 2,
+  "averageQuizScore": 78.5,
+  "totalAbsences": 1,
+  "totalHomeworkSubmitted": 8,
+  "totalQuizzesTaken": 6,
+  "coursesActivity": [
+    { "courseId": 1, "title": "Math", "teacherName": "...", "progressPercent": 100, "enrolledAt": "..." }
+  ]
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/profile</span>
+      <span class="endpoint-desc">Student profile data</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "userId": "guid",
+  "firstName": "string",
+  "lastName": "string",
+  "email": "string",
+  "phone": "string",
+  "languagePref": "en",
+  "academicLevel": "Secondary",
+  "classLevel": "2",
+  "parentEmail": "parent@example.com"
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/student/profile</span>
+      <span class="endpoint-desc">Update student profile</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body (all optional)</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">FirstName</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">LastName</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">Phone</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">LanguagePref</span><span class="field-type">string?</span><span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Profile updated successfully." }</code></div>
+    </div>
+  </div>
+</div>
+
+<!-- Student Subjects -->
+<div class="section" id="student-subjects">
+  <div class="section-title"><span class="tag tag-student">STUDENT</span> Subjects — <code>/api/subject</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/subject/my-subjects</span>
+      <span class="endpoint-desc">All enrolled courses with live progress</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of SubjectListItemDto:</div>
+      <pre><code>{
+  "courseId": 1,
+  "title": "Math",
+  "academicLevel": "Secondary",
+  "academicYear": 2,
+  "teacherName": "Ali Hassan",
+  "teacherSubject": "Math",
+  "progressPercent": 60,
+  "totalSessions": 10,
+  "completedSessions": 6,
+  "enrolledAt": "datetime"
+}</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Student with 3 enrollments</div>
+        <div class="test-case-body">→ 200 with 3 items. Progress is computed as (sessions watched / total sessions) × 100.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — No enrollments</div>
+        <div class="test-case-body">→ 200 empty array.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/subject/{courseId}/sessions</span>
+      <span class="endpoint-desc">All sessions for a course with per-session progress</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-403">403 — Student not enrolled in this course</div>
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "courseId": 1,
+  "courseTitle": "Math",
+  "academicLevel": "string",
+  "academicYear": 2,
+  "teacherName": "string",
+  "teacherSubject": "Math",
+  "progressPercent": 60,
+  "totalSessions": 10,
+  "completedSessions": 6,
+  "sessions": [
+    {
+      "sessionId": 10,
+      "title": "Lesson 1",
+      "availableDays": 7,
+      "maxViews": 3,
+      "viewsUsed": 1,
+      "viewsRemaining": 2,
+      "isWatched": true,
+      "watchProgressPercent": 85.0,
+      "hasAttachment": true,
+      "attachmentUrl": "string",
+      "hasHomework": true,
+      "homeworkUrl": "string",
+      "hasEntryTest": true,
+      "entryTestPassed": true,
+      "entryTestBestScore": 90.0,
+      "homeworkSubmitted": false,
+      "homeworkGrade": null
+    }
+  ]
+}</code></pre>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Enrolled student</div>
+        <div class="test-case-body">→ 200 with all sessions. Progress and quiz status computed live.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Student not enrolled</div>
+        <div class="test-case-body">→ 403 Forbidden.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Non-existent course</div>
+        <div class="test-case-body">→ 404 "Course not found."</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Student Lessons & Quizzes -->
+<div class="section" id="student-lessons">
+  <div class="section-title"><span class="tag tag-student">STUDENT</span> Lessons, Quizzes &amp; Homework — <code>/api/student</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/student/lesson/{sessionId}/progress</span>
+      <span class="endpoint-desc">Report video watch progress for a lesson</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">ProgressPercent</span><span class="field-type">double</span><span><span class="badge badge-req">required</span> 0–100</span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Progress updated.", "progressPercent": 75.0 }</code></div>
+      <div class="response-403">403 — Not enrolled in this course</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — First progress report</div>
+        <div class="test-case-body">→ 200. New LessonProgress row created with Views=1.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Rewatch (progress resets)</div>
+        <div class="test-case-body">→ 200. Views incremented (up to MaxViews). Max progress preserved.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Not enrolled</div>
+        <div class="test-case-body">→ 403.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/quiz/{sessionId}</span>
+      <span class="endpoint-desc">Get quiz details for a lesson (never exposes correct answers)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "quizId": 5,
+  "title": "Quiz 1",
+  "passingScore": 70,
+  "retakeIntervalHours": 24,
+  "alreadyPassed": false,
+  "lastScore": 60.0,
+  "canRetakeAt": "2026-04-17T10:00:00Z",
+  "questions": [
+    {
+      "questionId": 1, "text": "What is 2+2?",
+      "options": [ { "optionId": 1, "text": "3" }, { "optionId": 2, "text": "4" } ]
+    }
+  ]
+}</code></pre>
+      <div class="response-404">404 — Session not found or has no quiz</div>
+      <div class="response-403">403 — Not enrolled</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/student/quiz/{sessionId}/submit</span>
+      <span class="endpoint-desc">Submit quiz answers and get graded result</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <pre><code>{ "answers": { "1": 2, "2": 5, "3": 8 } }  // questionId → optionId</code></pre>
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "score": 7,
+  "totalQuestions": 10,
+  "percentage": 70.0,
+  "passed": true,
+  "breakdown": [
+    { "questionId": 1, "selectedOptionId": 2, "correctOptionId": 2, "isCorrect": true }
+  ]
+}</code></pre>
+      <div class="response-400">400 — Already passed, or retake interval not expired</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Pass on first attempt</div>
+        <div class="test-case-body">→ 200 with <code>passed: true</code>. Attempt saved.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Fail, retake after interval</div>
+        <div class="test-case-body">→ 200 with <code>passed: false</code>. Can retake after <code>retakeIntervalHours</code>.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Retake before interval</div>
+        <div class="test-case-body">→ 400 <code>{ "message": "Retake interval has not expired yet.", "canRetakeAt": "..." }</code></div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-04 — Already passed</div>
+        <div class="test-case-body">→ 400 "You have already passed this quiz."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/student/homework/{sessionId}/submit</span>
+      <span class="endpoint-desc">Submit homework file for a session</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">FileName</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">FileUrl</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">FileSizeBytes</span><span class="field-type">long</span><span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Homework submitted successfully.", "submissionId": 42 }</code></div>
+      <div class="response-400">400 — Already submitted or session has no homework</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — First submission</div>
+        <div class="test-case-body">→ 200 with new submissionId.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Duplicate submission</div>
+        <div class="test-case-body">→ 400 "You have already submitted homework for this session."</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Session has no homework URL</div>
+        <div class="test-case-body">→ 400 "This session does not have a homework assignment."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/homework/{sessionId}</span>
+      <span class="endpoint-desc">Get homework submission status for a session</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "submissionId": 42,
+  "fileName": "math_hw.pdf",
+  "fileUrl": "https://...",
+  "submittedAt": "datetime",
+  "isReviewed": false,
+  "grade": null,
+  "teacherComment": null
+}</code></pre>
+      <div class="response-404">404 — No submission found</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/student/request/views</span>
+      <span class="endpoint-desc">Request additional lesson views from teacher</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">SessionId</span><span class="field-type">int</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Reason</span><span class="field-type">string?</span><span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "View request submitted.", "requestId": "guid" }</code></div>
+      <div class="response-400">400 — Pending request already exists</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/student/request/retake</span>
+      <span class="endpoint-desc">Request a quiz retake before the interval expires</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">SessionId</span><span class="field-type">int</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Reason</span><span class="field-type">string?</span><span></span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Retake request submitted.", "requestId": "guid" }</code></div>
+      <div class="response-400">400 — Pending request already exists</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/request/my-requests</span>
+      <span class="endpoint-desc">List all requests made by the student and their status</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "id": "guid",
+  "sessionTitle": "Lesson 1",
+  "type": "view" | "test",
+  "reason": "string",
+  "status": "Pending" | "Approved" | "Denied",
+  "createdAt": "datetime"
+}</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Student Tasks -->
+<div class="section" id="student-tasks">
+  <div class="section-title"><span class="tag tag-student">STUDENT</span> Tasks &amp; Calendar — <code>/api/student/tasks</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/student/tasks</span>
+      <span class="endpoint-desc">Create a personal task (one-time or recurring)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Title</span><span class="field-type">string</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">Description</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">Date</span><span class="field-type">datetime</span><span><span class="badge badge-req">required</span></span>
+        <span class="field-name">StartTime</span><span class="field-type">string?</span><span>e.g. "09:00" (HH:mm)</span>
+        <span class="field-name">EndTime</span><span class="field-type">string?</span><span></span>
+        <span class="field-name">IsRecurring</span><span class="field-type">bool</span><span>default false</span>
+        <span class="field-name">RecurrenceFrequency</span><span class="field-type">string?</span><span>"Daily", "Weekly", or "Monthly"</span>
+        <span class="field-name">RecurrenceInterval</span><span class="field-type">int</span><span>e.g. 2 = every 2 weeks</span>
+        <span class="field-name">RecurringDays</span><span class="field-type">string?</span><span>"Mo,We,Fr" (Weekly only)</span>
+      </div>
+      <div class="response-200">201 Created — TaskResponseDto</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — One-time task</div>
+        <div class="test-case-body">Body: <code>{"title":"Study","date":"2026-04-20"}</code> → 201 with task DTO.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-02 — Weekly recurring on Mon/Wed</div>
+        <div class="test-case-body">Body includes <code>isRecurring:true, recurrenceFrequency:"Weekly", recurringDays:"Mo,We"</code> → 201.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Recurring without frequency</div>
+        <div class="test-case-body">→ 400 "RecurrenceFrequency must be 'Daily', 'Weekly', or 'Monthly'..."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/tasks</span>
+      <span class="endpoint-desc">List all tasks (with optional completed filter)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Query Parameters</div>
+      <div class="field-grid">
+        <span class="header">Param</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">completed</span><span class="field-type">bool?</span><span>Filter by completion status</span>
+      </div>
+      <div class="label">Response 200 — Array of TaskResponseDto</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/tasks/{id}</span>
+      <span class="endpoint-desc">Get a single task by ID</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-404">404 — Task not found or not owned by student</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/student/tasks/{id}</span>
+      <span class="endpoint-desc">Update a task</span>
+    </div>
+    <div class="endpoint-body">
+      <p style="font-size:.82rem;color:var(--muted)">Same fields as Create, all optional. Only provided fields are updated. Returns updated TaskResponseDto.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PUT">PUT</span>
+      <span class="endpoint-path">/api/student/tasks/{id}/complete</span>
+      <span class="endpoint-desc">Toggle task completion</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Query Parameter</div>
+      <div class="field-grid">
+        <span class="header">Param</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">completed</span><span class="field-type">bool</span><span>default true</span>
+      </div>
+      <div class="response-200">200 — <code>{ "message": "Task marked as completed." }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/api/student/tasks/{id}</span>
+      <span class="endpoint-desc">Delete a task</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "message": "Task deleted." }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/tasks/homework-calendar</span>
+      <span class="endpoint-desc">Homework calendar for the current month</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "year": 2026, "month": 4,
+  "daysWithSubmissions": [5, 10, 18],
+  "tasksThisMonth": [ /* TaskResponseDto[] */ ],
+  "submissions": [
+    {
+      "submissionId": 42, "sessionTitle": "Lesson 2", "courseTitle": "Math",
+      "submittedAt": "datetime", "isReviewed": false, "grade": null
+    }
+  ]
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/tasks/homework-calendar/{year}/{month}</span>
+      <span class="endpoint-desc">Homework calendar for a specific month</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-400">400 — Month not in 1–12</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Valid year/month</div>
+        <div class="test-case-body">→ 200 with calendar data for that month.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — month=13</div>
+        <div class="test-case-body">→ 400 "Month must be between 1 and 12."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/tasks/by-date</span>
+      <span class="endpoint-desc">Tasks and homework for a specific calendar date</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Query Parameter</div>
+      <div class="field-grid">
+        <span class="header">Param</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">date</span><span class="field-type">datetime</span><span><span class="badge badge-req">required</span> ISO-8601</span>
+      </div>
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "date": "2026-04-20T00:00:00Z",
+  "tasks": [ /* TaskResponseDto[] — recurring tasks matched to this date */ ],
+  "homeworks": [ /* HomeworkCalendarItemDto[] */ ]
+}</code></pre>
+      <p style="font-size:.8rem;color:var(--muted);margin-top:.5rem">Recurring tasks are evaluated using their frequency pattern. A Weekly task with <code>recurringDays:"Mo,We"</code> will only appear on Mondays and Wednesdays.</p>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/tasks/my-courses</span>
+      <span class="endpoint-desc">Enrolled courses grouped by progress (ongoing / upcoming / completed)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200</div>
+      <pre><code>{
+  "ongoing":   [ /* courses with 0 < progress < 100 */ ],
+  "upcoming":  [ /* courses with progress == 0 */ ],
+  "completed": [ /* courses with progress == 100 */ ]
+}</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- Student Notifications -->
+<div class="section" id="student-notifications">
+  <div class="section-title"><span class="tag tag-student">STUDENT</span> Notifications — <code>/api/student/notifications</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/notifications</span>
+      <span class="endpoint-desc">List notifications (newest first, optional unread filter)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Query Parameter</div>
+      <div class="field-grid">
+        <span class="header">Param</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">unreadOnly</span><span class="field-type">bool</span><span>default false</span>
+      </div>
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{ "id": 1, "title": "...", "body": "...", "type": "general", "isRead": false, "createdAt": "...", "timeAgo": "5m ago" }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/notifications/unread-count</span>
+      <span class="endpoint-desc">Badge count for the app header</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "unreadCount": 5 }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PATCH">PATCH</span>
+      <span class="endpoint-path">/api/student/notifications/{id}/read</span>
+      <span class="endpoint-desc">Mark one notification as read</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "success": true, "unreadCount": 4 }</code></div>
+      <div class="response-404">404 — Notification not found for this user</div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method PATCH">PATCH</span>
+      <span class="endpoint-path">/api/student/notifications/read-all</span>
+      <span class="endpoint-desc">Mark all notifications as read</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "success": true, "unreadCount": 0 }</code></div>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method DELETE">DELETE</span>
+      <span class="endpoint-path">/api/student/notifications/{id}</span>
+      <span class="endpoint-desc">Dismiss / delete a notification</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="response-200">200 — <code>{ "message": "Notification deleted." }</code></div>
+      <div class="response-404">404 — Notification not found</div>
+    </div>
+  </div>
+</div>
+
+<!-- Student Messages -->
+<div class="section" id="student-messages">
+  <div class="section-title"><span class="tag tag-student">STUDENT</span> Messaging — <code>/api/student/messages</code></div>
+
+  <div class="endpoint open">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/messages</span>
+      <span class="endpoint-desc">Conversation list (most-recent partner first)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{
+  "partnerId": "guid",
+  "partnerName": "string",
+  "lastMessage": "Hi, how are you?",
+  "sentAt": "datetime",
+  "unreadCount": 2
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method GET">GET</span>
+      <span class="endpoint-path">/api/student/messages/{partnerId}</span>
+      <span class="endpoint-desc">Full thread with a partner (marks incoming as read)</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Response 200 — Array of:</div>
+      <pre><code>{ "id": 1, "content": "Hello", "sentAt": "datetime", "isMine": true, "isRead": true }</code></pre>
+    </div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method POST">POST</span>
+      <span class="endpoint-path">/api/student/messages/{receiverId}</span>
+      <span class="endpoint-desc">Send a message to any user</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="label">Request Body</div>
+      <div class="field-grid">
+        <span class="header">Field</span><span class="header">Type</span><span class="header">Notes</span>
+        <span class="field-name">Content</span><span class="field-type">string</span><span><span class="badge badge-req">required</span> non-empty</span>
+      </div>
+      <div class="response-200">200 — <code>{ "id": 42, "sentAt": "datetime" }</code></div>
+      <div class="response-400">400 — Empty content</div>
+      <div class="response-404">404 — Receiver not found</div>
+      <div class="label">Test Cases</div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-pass">✔</span> TC-01 — Message to moderator</div>
+        <div class="test-case-body">→ 200 with new message ID and timestamp.</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-02 — Empty content</div>
+        <div class="test-case-body">→ 400 "Message content cannot be empty."</div>
+      </div>
+      <div class="test-case">
+        <div class="test-case-header"><span class="tc-fail">✘</span> TC-03 — Non-existent receiver</div>
+        <div class="test-case-body">→ 404 "Recipient not found."</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<hr>
+<p style="text-align:center;color:var(--muted);font-size:.8rem;margin-top:2rem">Grad Platform API Documentation · Generated April 2026 · ASP.NET Core 9 / Entity Framework / JWT Bearer</p>
+
+</main>
+</div>
+
+<script>
+function toggle(header) {
+  const card = header.parentElement;
+  card.classList.toggle('open');
+}
+// Open all endpoints in viewport on load for first impression
+document.querySelectorAll('.endpoint.open').forEach(e => {}); // already open via CSS class
+</script>
+</body>
+</html>

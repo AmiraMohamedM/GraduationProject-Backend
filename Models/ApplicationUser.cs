@@ -9,7 +9,9 @@ namespace grad.Models
         public string firstname { get; set; }
         public string lastname { get; set; }
 
+        public string? ProfileImageUrl { get; set; }
 
+        public string? ProfileImagePublicId { get; set; }
         public string? language_pref { get; set; }
         public string? device_id { get; set; }
 

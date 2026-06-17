@@ -84,14 +84,13 @@ namespace grad.Services
             }
 
             await _userManager.AddToRoleAsync(user, "Student");
-
             var student = new Student
             {
                 student_id = Guid.NewGuid(),
                 user_id = user.Id,
                 AcademicLevel = dto.AcademicLevel,
                 AcademicYear = dto.AcademicYear,
-                parent_email = dto.ParentPhoneNumber ?? string.Empty
+                ParentPhoneNumber = dto.ParentPhoneNumber ?? string.Empty
             };
 
             _db.Students.Add(student);

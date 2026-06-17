@@ -12,8 +12,8 @@ using grad.Data;
 namespace grad.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260411153846_AddUserCreatedAt")]
-    partial class AddUserCreatedAt
+    [Migration("20260617093655_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -257,12 +257,12 @@ namespace grad.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid>("admin_id")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("admin_id");
+                    b.HasIndex("UserId");
 
                     b.ToTable("activity_logs", (string)null);
                 });
@@ -330,6 +330,12 @@ namespace grad.Migrations
 
                     b.Property<DateTime?>("PlanExpiresAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProfileImagePublicId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProfileImageUrl")
+                        .HasColumnType("text");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
@@ -440,6 +446,9 @@ namespace grad.Migrations
 
                     b.Property<int>("CourseId")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int?>("EntryTestId")
                         .HasColumnType("integer");
@@ -661,7 +670,7 @@ namespace grad.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("Messages");
+                    b.ToTable("Message");
                 });
 
             modelBuilder.Entity("grad.Models.Moderator", b =>
@@ -748,6 +757,31 @@ namespace grad.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("grad.Models.Photo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("PublicId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Photos");
+                });
+
             modelBuilder.Entity("grad.Models.Question", b =>
                 {
                     b.Property<int>("Id")
@@ -808,8 +842,14 @@ namespace grad.Migrations
                     b.Property<int>("AcademicYear")
                         .HasColumnType("integer");
 
-                    b.Property<string>("parent_email")
+                    b.Property<string>("ParentPhoneNumber")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProfileImagePublicId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProfileImageUrl")
                         .HasColumnType("text");
 
                     b.Property<Guid>("user_id")
@@ -930,6 +970,68 @@ namespace grad.Migrations
                     b.HasIndex("StudentId");
 
                     b.ToTable("student_requests", (string)null);
+                });
+
+            modelBuilder.Entity("grad.Models.StudentTask", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<TimeSpan?>("EndTime")
+                        .HasColumnType("interval");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRecurring")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RecurrenceFrequency")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("RecurrenceInterval")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RecurringDays")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<TimeSpan?>("StartTime")
+                        .HasColumnType("interval");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("StudentId", "Date");
+
+                    b.ToTable("student_tasks", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.StudentTeacher", b =>
@@ -1074,13 +1176,13 @@ namespace grad.Migrations
 
             modelBuilder.Entity("grad.Models.ActivityLogs", b =>
                 {
-                    b.HasOne("grad.Models.ApplicationUser", "Admin")
+                    b.HasOne("grad.Models.ApplicationUser", "User")
                         .WithMany()
-                        .HasForeignKey("admin_id")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Admin");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("grad.Models.ClassLevel", b =>
@@ -1225,6 +1327,17 @@ namespace grad.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("grad.Models.Photo", b =>
+                {
+                    b.HasOne("grad.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("grad.Models.Question", b =>
                 {
                     b.HasOne("Quiz", "Quiz")
@@ -1303,6 +1416,17 @@ namespace grad.Migrations
                         .IsRequired();
 
                     b.Navigation("CourseSession");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("grad.Models.StudentTask", b =>
+                {
+                    b.HasOne("grad.Models.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Student");
                 });

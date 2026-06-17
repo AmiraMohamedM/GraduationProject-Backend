@@ -43,6 +43,8 @@ namespace grad.Data
         public DbSet<LessonAttempt> LessonAttempts { get; set; }
         public DbSet<StudentTask> StudentTasks { get; set; }
         public DbSet<Message> ChatMessages { get; set; }
+        public DbSet<Photo> Photos { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
