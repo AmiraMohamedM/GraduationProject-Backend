@@ -50,11 +50,9 @@ namespace grad.Controllers
             var courseIds = subjects.Select(c => c.Id).ToList();
 
             var totalStudents = await _db.Enrollments
-<<<<<<< HEAD
-                .Where(e => e.Course.TeacherId == teacher.teacher_id)
-=======
+
                 .Where(e => courseIds.Contains(e.CourseId))
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
+
                 .Select(e => e.StudentId)
                 .Distinct()
                 .CountAsync();
@@ -105,22 +103,17 @@ namespace grad.Controllers
                 .Select(c => c.Id)
                 .ToListAsync();
 
-<<<<<<< HEAD
+
+
 
             var studentIds = await _db.Enrollments
-                .Where(e => e.Course.TeacherId == teacher.teacher_id)
-=======
-            var studentIds = await _db.Enrollments
                 .Where(e => courseIds.Contains(e.CourseId))
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
+
                 .Select(e => e.StudentId)
                 .Distinct()
                 .ToListAsync();
 
-<<<<<<< HEAD
 
-=======
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
             var students = await _db.Students
                 .Include(s => s.User)
                 .Where(s => studentIds.Contains(s.student_id))
@@ -220,14 +213,11 @@ namespace grad.Controllers
 
             return Ok();
         }
-<<<<<<< HEAD
-       
-        
-=======
+
 
         // SUBJECTS (COURSES)
       
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
+
         [HttpGet("subjects")]
         public async Task<IActionResult> GetSubjects()
         {
@@ -387,7 +377,7 @@ namespace grad.Controllers
             if (subject == null)
                 return NotFound();
 
-<<<<<<< HEAD
+
 
             string? homeworkFileUrl = null;
             string? homeworkFileName = null;
@@ -419,8 +409,7 @@ namespace grad.Controllers
                 homeworkFileType = dto.HomeworkFile.ContentType;
                 homeworkFileSize = dto.HomeworkFile.Length;
             }
-=======
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
+
             var courseSession = new CourseSession
             {
                 CourseId = courseId,
@@ -440,7 +429,7 @@ namespace grad.Controllers
             _db.CourseSessions.Add(courseSession);
             await _db.SaveChangesAsync();
 
-<<<<<<< HEAD
+
             if (dto.Files != null && dto.Files.Any())
             {
                 var uploadsFolder = Path.Combine(
@@ -481,9 +470,9 @@ namespace grad.Controllers
                 message = "Lesson created successfully",
                 lessonId = courseSession.Id
             });
-=======
+
             return Ok(courseSession);
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
+
         }
 
         [HttpPut("lessons/{lessonId}")]
@@ -500,7 +489,7 @@ namespace grad.Controllers
                     l.Id == lessonId &&
                     l.Course.TeacherId == teacher.teacher_id);
 
-<<<<<<< HEAD
+
             if (courseSession == null)
                 return NotFound();
 
@@ -573,16 +562,7 @@ namespace grad.Controllers
                     });
                 }
             }
-=======
-            if (courseSession == null) return NotFound();
 
-            courseSession.Title = dto.Title ?? courseSession.Title;
-            courseSession.AttachmentUrl = dto.AttachmentUrl ?? courseSession.AttachmentUrl;
-            courseSession.AvailableDays = dto.AvailableDays;
-            courseSession.MaxViews = dto.MaxViews;
-            courseSession.HomeworkUrl = dto.HomeworkUrl ?? courseSession.HomeworkUrl;
-            courseSession.HasEntryTest = dto.HasEntryTest;
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
 
             await _db.SaveChangesAsync();
 
@@ -651,7 +631,7 @@ namespace grad.Controllers
             });
         }
 
-<<<<<<< HEAD
+
         [HttpGet("students/{studentId}")]
         public async Task<IActionResult> GetStudentDetails(Guid studentId)
         {
@@ -773,9 +753,9 @@ namespace grad.Controllers
                 Lessons = lessonData
             });
         }
-=======
+
         // STUDENTS STATS
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
+
         [HttpGet("students/stats")]
         public async Task<IActionResult> GetStudentsStats()
         {
@@ -788,11 +768,9 @@ namespace grad.Controllers
                 .ToListAsync();
 
             var studentIds = await _db.Enrollments
-<<<<<<< HEAD
-                .Where(e => e.Course.TeacherId == teacher.teacher_id)
-=======
+
                 .Where(e => courseIds.Contains(e.CourseId))
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
+
                 .Select(e => e.StudentId)
                 .Distinct()
                 .ToListAsync();
@@ -972,8 +950,7 @@ namespace grad.Controllers
                 Data = result
             });
         }
-<<<<<<< HEAD
-=======
+
 
         private string GetRelativeTime(DateTime date)
         {
@@ -990,63 +967,6 @@ namespace grad.Controllers
         }
 
 
-        public class CreateCourseDto
-        {
-            public string Title { get; set; }
-            public string AcademicLevel { get; set; }
-            public int AcademicYear { get; set; }
-        }
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
-
-
-
-
-<<<<<<< HEAD
-        //  public class StudentStatsDto
-        //  {
-        //    public Guid StudentId { get; set; }
-        // public string Name { get; set; }
-        //  public string EducationLevel { get; set; }
-
-        //   public int TotalLessons { get; set; }
-        //  public int CompletedLessons { get; set; }
-
-        //  public decimal AvgScore { get; set; }
-        //  public DateTime? LastActive { get; set; }
-        // }
-=======
-        public class AddOptionDto
-        {
-            public string Text { get; set; }
-            public bool IsCorrect { get; set; }
-        }
-
-        public class TeacherStudentDto
-        {
-            public string Code { get; set; }
-            public string StudentName { get; set; }
-            public string EducationLevel { get; set; }
-            public string LessonsCompleted { get; set; }
-            public double AvgScore { get; set; }
-            public string LastActive { get; set; }
-        }
-
-        public class StudentGradesDto
-        {
-            public string StudentName { get; set; }
-            public double EntryTest { get; set; }
-            public double Overall { get; set; }
-        }
-
-        public class LessonStatsDto
-        {
-            public string StudentName { get; set; }
-            public string Views { get; set; }
-            public int Progress { get; set; }
-            public string LastWatched { get; set; }
-            public string EntryTest { get; set; }
-            public string Homework { get; set; }
-        }
->>>>>>> cd71cca10328f59631cfa61aa852c932f81b1d50
+ 
     }
 }
