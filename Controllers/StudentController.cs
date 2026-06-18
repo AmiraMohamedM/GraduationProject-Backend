@@ -121,9 +121,9 @@ namespace grad.Controllers
                 UnreadNotifications = unread,
                 Statistics = new StudentDashboardStatsDto
                 {
-                    Absence = stats.Absence,
-                    TasksSubmitted = stats.Tasks,
-                    QuizzesTaken = stats.Quiz,
+                    Absence = (int)stats.Absence,
+                    TasksSubmitted = (int)stats.Tasks,
+                    QuizzesTaken = (int)stats.Quiz,
                     OverallProgress = overallProgress
                 },
                 RecentCourses = recentCourses
@@ -206,9 +206,9 @@ namespace grad.Controllers
                 TotalEnrolled = enrollments.Count,
                 CompletedCourses = completedCourses,
                 AverageQuizScore = avgQuizScore,
-                TotalAbsences = stats.Absence,
-                TotalHomeworkSubmitted = stats.Tasks,
-                TotalQuizzesTaken = stats.Quiz,
+                TotalAbsences = (int)stats.Absence,
+                TotalHomeworkSubmitted = (int)stats.Tasks,
+                TotalQuizzesTaken = (int)stats.Quiz,
                 CoursesActivity = activity
             });
         }
