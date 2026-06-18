@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using grad.Data;
@@ -11,9 +12,11 @@ using grad.Data;
 namespace grad.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618033032_AddFileFieldsToCourseSession")]
+    partial class AddFileFieldsToCourseSession
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -441,19 +444,22 @@ namespace grad.Migrations
                     b.Property<int?>("EntryTestId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("FileName")
+                        .HasColumnType("text");
+
+                    b.Property<long?>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FileType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FileUrl")
+                        .HasColumnType("text");
+
                     b.Property<bool>("HasEntryTest")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("HomeworkFileName")
-                        .HasColumnType("text");
-
-                    b.Property<long?>("HomeworkFileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("HomeworkFileType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("HomeworkFileUrl")
+                    b.Property<string>("HomeworkUrl")
                         .HasColumnType("text");
 
                     b.Property<int>("MaxViews")
@@ -599,39 +605,6 @@ namespace grad.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("lesson_attempts", (string)null);
-                });
-
-            modelBuilder.Entity("grad.Models.LessonFile", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CourseSessionId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("FileType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("FileUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CourseSessionId");
-
-                    b.ToTable("LessonFiles");
                 });
 
             modelBuilder.Entity("grad.Models.LessonProgress", b =>
@@ -1255,17 +1228,6 @@ namespace grad.Migrations
                     b.Navigation("Student");
                 });
 
-            modelBuilder.Entity("grad.Models.LessonFile", b =>
-                {
-                    b.HasOne("grad.Models.CourseSession", "CourseSession")
-                        .WithMany("Files")
-                        .HasForeignKey("CourseSessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CourseSession");
-                });
-
             modelBuilder.Entity("grad.Models.LessonProgress", b =>
                 {
                     b.HasOne("grad.Models.CourseSession", "CourseSession")
@@ -1476,8 +1438,6 @@ namespace grad.Migrations
             modelBuilder.Entity("grad.Models.CourseSession", b =>
                 {
                     b.Navigation("EntryTest");
-
-                    b.Navigation("Files");
                 });
 
             modelBuilder.Entity("grad.Models.Moderator", b =>

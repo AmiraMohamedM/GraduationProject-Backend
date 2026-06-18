@@ -661,7 +661,7 @@ namespace grad.Controllers
             if (session == null)
                 return NotFound(new { message = "Session not found." });
 
-            if (string.IsNullOrEmpty(session.HomeworkUrl))
+            if (string.IsNullOrEmpty(session.HomeworkFileUrl))
                 return BadRequest(new { message = "This session does not have a homework assignment." });
 
             var enrolled = await _db.Enrollments

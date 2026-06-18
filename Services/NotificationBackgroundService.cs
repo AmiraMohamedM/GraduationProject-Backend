@@ -75,7 +75,7 @@ namespace grad.Services
             {
                 foreach (var session in enrollment.Course.CourseSessions)
                 {
-                    bool hasHomework = !string.IsNullOrEmpty(session.HomeworkUrl);
+                    bool hasHomework = !string.IsNullOrEmpty(session.HomeworkFileUrl);
                     bool hasQuiz = session.HasEntryTest;
                     if (!hasHomework && !hasQuiz) continue;
 

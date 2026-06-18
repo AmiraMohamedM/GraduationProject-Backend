@@ -45,8 +45,8 @@ namespace grad.Controllers
 
             var courseIds = subjects.Select(c => c.Id).ToList();
 
-            var totalStudents = await _db.StudentTeachers
-                .Where(st => st.TeacherId == teacher.teacher_id)
+            var totalStudents = await _db.Enrollments
+                .Where(e => e.Course.TeacherId == teacher.teacher_id)
                 .Select(e => e.StudentId)
                 .Distinct()
                 .CountAsync();
@@ -94,14 +94,14 @@ namespace grad.Controllers
             if (teacher == null)
                 return NotFound();
 
-       
-            var studentIds = await _db.StudentTeachers
-                .Where(st => st.TeacherId == teacher.teacher_id)
-                .Select(st => st.StudentId)
+
+            var studentIds = await _db.Enrollments
+                .Where(e => e.Course.TeacherId == teacher.teacher_id)
+                .Select(e => e.StudentId)
                 .Distinct()
                 .ToListAsync();
 
-   
+
             var students = await _db.Students
                 .Include(s => s.User)
                 .Where(s => studentIds.Contains(s.student_id))
@@ -200,6 +200,8 @@ namespace grad.Controllers
 
             return Ok();
         }
+       
+        
         [HttpGet("subjects")]
         public async Task<IActionResult> GetSubjects()
         {
@@ -226,6 +228,8 @@ namespace grad.Controllers
             return Ok(subjects);
         }
 
+       
+        
         [HttpPost("subjects")]
         public async Task<IActionResult> CreateSubject(CreateCourseDto dto)
         {
@@ -245,6 +249,8 @@ namespace grad.Controllers
             return Ok(subject);
         }
 
+       
+        
         [HttpPut("subjects/{courseId}")]
         public async Task<IActionResult> UpdateSubject(int courseId, CreateCourseDto dto)
         {
@@ -291,7 +297,11 @@ namespace grad.Controllers
             var subject = await _db.Courses
                 .Include(c => c.CourseSessions)
                     .ThenInclude(l => l.EntryTest)
-                .FirstOrDefaultAsync(c => c.Id == courseId && c.TeacherId == teacher.teacher_id);
+                .Include(c => c.CourseSessions)
+                    .ThenInclude(l => l.Files)
+                .FirstOrDefaultAsync(c =>
+                    c.Id == courseId &&
+                    c.TeacherId == teacher.teacher_id);
 
             if (subject == null) return NotFound();
 
@@ -305,10 +315,22 @@ namespace grad.Controllers
                 {
                     l.Id,
                     l.Title,
-                    l.AttachmentUrl,
+
+                    Files = l.Files.Select(f => new
+                    {
+                        f.Id,
+                        f.FileName,
+                        f.FileType,
+                        f.FileSize,
+                        f.FileUrl
+                    }),
+
                     l.AvailableDays,
                     l.MaxViews,
-                    l.HomeworkUrl,
+                    l.HomeworkFileUrl,
+                    l.HomeworkFileName,
+                    l.HomeworkFileType,
+                    l.HomeworkFileSize,
                     l.HasEntryTest,
                     EntryTest = l.EntryTest == null ? null : new
                     {
@@ -321,53 +343,204 @@ namespace grad.Controllers
         }
 
         [HttpPost("subjects/{courseId}/lessons")]
-        public async Task<IActionResult> AddLesson(int courseId, AddLessonDto dto)
+        public async Task<IActionResult> AddLesson(
+            int courseId,
+            [FromForm] AddLessonDto dto)
         {
             var teacher = await GetCurrentTeacherAsync();
 
             var subject = await _db.Courses
-                .FirstOrDefaultAsync(c => c.Id == courseId && c.TeacherId == teacher.teacher_id);
+                .FirstOrDefaultAsync(c =>
+                    c.Id == courseId &&
+                    c.TeacherId == teacher.teacher_id);
 
-            if (subject == null) return NotFound();
+            if (subject == null)
+                return NotFound();
 
-            var CourseSession = new CourseSession
+
+            string? homeworkFileUrl = null;
+            string? homeworkFileName = null;
+            string? homeworkFileType = null;
+            long? homeworkFileSize = null;
+
+            if (dto.HomeworkFile != null)
+            {
+                var homeworkFolder = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "homeworks");
+
+                Directory.CreateDirectory(homeworkFolder);
+
+                var uniqueHomeworkName =
+                    $"{Guid.NewGuid()}{Path.GetExtension(dto.HomeworkFile.FileName)}";
+
+                var homeworkPath =
+                    Path.Combine(homeworkFolder, uniqueHomeworkName);
+
+                using (var stream = new FileStream(homeworkPath, FileMode.Create))
+                {
+                    await dto.HomeworkFile.CopyToAsync(stream);
+                }
+
+                homeworkFileUrl = $"/homeworks/{uniqueHomeworkName}";
+                homeworkFileName = dto.HomeworkFile.FileName;
+                homeworkFileType = dto.HomeworkFile.ContentType;
+                homeworkFileSize = dto.HomeworkFile.Length;
+            }
+            var courseSession = new CourseSession
             {
                 CourseId = courseId,
                 Title = dto.Title,
-                AttachmentUrl = dto.AttachmentUrl,
+
                 AvailableDays = dto.AvailableDays,
                 MaxViews = dto.MaxViews,
-                HomeworkUrl = dto.HomeworkUrl,
+
+                HomeworkFileUrl = homeworkFileUrl,
+                HomeworkFileName = homeworkFileName,
+                HomeworkFileType = homeworkFileType,
+                HomeworkFileSize = homeworkFileSize,
+
                 HasEntryTest = dto.HasEntryTest
             };
 
-            _db.CourseSessions.Add(CourseSession);
+            _db.CourseSessions.Add(courseSession);
             await _db.SaveChangesAsync();
 
-            return Ok(CourseSession);
+            if (dto.Files != null && dto.Files.Any())
+            {
+                var uploadsFolder = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "uploads");
+
+                Directory.CreateDirectory(uploadsFolder);
+
+                foreach (var file in dto.Files)
+                {
+                    var uniqueFileName =
+                        $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+
+                    var filePath =
+                        Path.Combine(uploadsFolder, uniqueFileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    _db.LessonFiles.Add(new LessonFile
+                    {
+                        CourseSessionId = courseSession.Id,
+                        FileUrl = $"/uploads/{uniqueFileName}",
+                        FileName = file.FileName,
+                        FileType = file.ContentType,
+                        FileSize = file.Length
+                    });
+                }
+
+                await _db.SaveChangesAsync();
+            }
+
+            return Ok(new
+            {
+                message = "Lesson created successfully",
+                lessonId = courseSession.Id
+            });
         }
 
         [HttpPut("lessons/{lessonId}")]
-        public async Task<IActionResult> UpdateLesson(int lessonId, AddLessonDto dto)
+        public async Task<IActionResult> UpdateLesson(
+            int lessonId,
+            [FromForm] AddLessonDto dto)
         {
             var teacher = await GetCurrentTeacherAsync();
 
-            var CourseSession = await _db.CourseSessions
+            var courseSession = await _db.CourseSessions
                 .Include(l => l.Course)
-                .FirstOrDefaultAsync(l => l.Id == lessonId && l.Course.TeacherId == teacher.teacher_id);
+                .FirstOrDefaultAsync(l =>
+                    l.Id == lessonId &&
+                    l.Course.TeacherId == teacher.teacher_id);
 
-            if (CourseSession == null) return NotFound();
+            if (courseSession == null)
+                return NotFound();
 
-            CourseSession.Title = dto.Title ?? CourseSession.Title;
-            CourseSession.AttachmentUrl = dto.AttachmentUrl ?? CourseSession.AttachmentUrl;
-            CourseSession.AvailableDays = dto.AvailableDays;
-            CourseSession.MaxViews = dto.MaxViews;
-            CourseSession.HomeworkUrl = dto.HomeworkUrl ?? CourseSession.HomeworkUrl;
-            CourseSession.HasEntryTest = dto.HasEntryTest;
+            courseSession.Title = dto.Title;
+            courseSession.AvailableDays = dto.AvailableDays;
+            courseSession.MaxViews = dto.MaxViews;
+            if (dto.HomeworkFile != null)
+            {
+                var homeworkFolder = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "homeworks");
+
+                Directory.CreateDirectory(homeworkFolder);
+
+                var uniqueHomeworkName =
+                    $"{Guid.NewGuid()}{Path.GetExtension(dto.HomeworkFile.FileName)}";
+
+                var homeworkPath =
+                    Path.Combine(homeworkFolder, uniqueHomeworkName);
+
+                using (var stream = new FileStream(homeworkPath, FileMode.Create))
+                {
+                    await dto.HomeworkFile.CopyToAsync(stream);
+                }
+
+                courseSession.HomeworkFileUrl =
+                    $"/homeworks/{uniqueHomeworkName}";
+
+                courseSession.HomeworkFileName =
+                    dto.HomeworkFile.FileName;
+
+                courseSession.HomeworkFileType =
+                    dto.HomeworkFile.ContentType;
+
+                courseSession.HomeworkFileSize =
+                    dto.HomeworkFile.Length;
+            }
+            courseSession.HasEntryTest = dto.HasEntryTest;
+
+            if (dto.Files != null && dto.Files.Any())
+            {
+                var uploadsFolder = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "uploads");
+
+                Directory.CreateDirectory(uploadsFolder);
+
+                foreach (var file in dto.Files)
+                {
+                    var uniqueFileName =
+                        $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+
+                    var filePath =
+                        Path.Combine(uploadsFolder, uniqueFileName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    _db.LessonFiles.Add(new LessonFile
+                    {
+                        CourseSessionId = courseSession.Id,
+                        FileUrl = $"/uploads/{uniqueFileName}",
+                        FileName = file.FileName,
+                        FileType = file.ContentType,
+                        FileSize = file.Length
+                    });
+                }
+            }
 
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = "CourseSession updated" });
+            return Ok(new
+            {
+                message = "Lesson updated successfully"
+            });
         }
 
         [HttpDelete("lessons/{lessonId}")]
@@ -426,6 +599,128 @@ namespace grad.Controllers
                 quiz.RetakeIntervalHours
             });
         }
+
+        [HttpGet("students/{studentId}")]
+        public async Task<IActionResult> GetStudentDetails(Guid studentId)
+        {
+            var teacher = await GetCurrentTeacherAsync();
+
+            if (teacher == null)
+                return NotFound();
+
+
+            var exists = await _db.Enrollments
+                .AnyAsync(e =>
+                    e.StudentId == studentId &&
+                    e.Course.TeacherId == teacher.teacher_id);
+
+            if (!exists)
+                return Unauthorized();
+
+            var student = await _db.Students
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.student_id == studentId);
+
+            if (student == null)
+                return NotFound();
+
+
+            var courseIds = await _db.Enrollments
+                .Where(e => e.StudentId == studentId &&
+                            e.Course.TeacherId == teacher.teacher_id)
+                .Select(e => e.CourseId)
+                .ToListAsync();
+
+            var lessons = await _db.CourseSessions
+                .Where(l => courseIds.Contains(l.CourseId))
+                .ToListAsync();
+
+            var lessonIds = lessons.Select(x => x.Id).ToList();
+
+         
+            var progress = await _db.LessonProgress
+                .Where(p =>
+                    p.StudentId == studentId &&
+                    lessonIds.Contains(p.CourseSessionId))
+                .ToListAsync();
+
+
+            var quizzes = await _db.StudentQuizResults
+                .Include(q => q.Quiz)
+                .Where(q =>
+                    q.StudentId == studentId &&
+                    courseIds.Contains(q.Quiz.CourseSession.CourseId))
+                .ToListAsync();
+
+            var avgScore = quizzes.Any()
+                ? Math.Round(quizzes.Average(q => q.Percentage), 2)
+                : 0;
+
+            var completionRate = lessons.Any()
+                ? Math.Round(
+                    (decimal)progress.Count(p => p.ProgressPercent >= 100)
+                    / lessons.Count * 100, 0)
+                : 0;
+
+            var grade = Math.Round(
+                (avgScore + completionRate) / 2,
+                0
+            );
+
+            var lessonData = lessons.Select(l =>
+            {
+                var p = progress
+                    .FirstOrDefault(x => x.CourseSessionId == l.Id);
+
+                var quiz = quizzes
+                    .Where(q => q.Quiz.CourseSessionId == l.Id)
+                    .OrderByDescending(q => q.SubmittedAt)
+                    .FirstOrDefault();
+
+                return new
+                {
+                    LessonId = l.Id,
+
+                    Lesson = l.Title,
+
+                    WatchPercent =
+                        p?.ProgressPercent ?? 0,
+
+                    ViewsUsed =
+                        $"{p?.Views ?? 0}/{l.MaxViews}",
+
+                    EntryTest =
+                        quiz == null
+                            ? "-"
+                            : $"{quiz.Percentage}%",
+
+                    Result =
+                        p == null
+                            ? "Locked"
+                            : p.ProgressPercent >= 100
+                                ? "Completed"
+                                : "Pending"
+                };
+            });
+
+            return Ok(new
+            {
+                StudentId = student.student_id,
+
+                StudentName =
+                    $"{student.User.firstname} {student.User.lastname}",
+
+             
+
+                Grade = grade,
+
+                AverageScore = avgScore,
+
+                CompletionRate = completionRate,
+
+                Lessons = lessonData
+            });
+        }
         [HttpGet("students/stats")]
         public async Task<IActionResult> GetStudentsStats()
         {
@@ -433,9 +728,9 @@ namespace grad.Controllers
             if (teacher == null) return NotFound();
 
 
-            var studentIds = await _db.StudentTeachers
-                .Where(st => st.TeacherId == teacher.teacher_id)
-                .Select(st => st.StudentId)
+            var studentIds = await _db.Enrollments
+                .Where(e => e.Course.TeacherId == teacher.teacher_id)
+                .Select(e => e.StudentId)
                 .Distinct()
                 .ToListAsync();
 
@@ -672,13 +967,17 @@ namespace grad.Controllers
                     StudentId = p.StudentId,
                     StudentName = user != null ? $"{user.firstname} {user.lastname}" : "",
 
-                    Views = p.Views,
+                    Views = $"{p.Views}/{lesson.MaxViews}",
                     Progress = p.ProgressPercent,
                     LastWatched = p.LastWatched,
 
                     EntryTest = quiz == null
-                        ? "Pending"
-                        : (quiz.Passed ? $"Passed ({quiz.Percentage}%)" : $"Failed ({quiz.Percentage}%)")
+    ? new { Status = "Pending", Score = (decimal?)null }
+    : new
+    {
+        Status = quiz.Passed ? "Passed" : "Failed",
+        Score = (decimal?)quiz.Percentage
+    }
                 };
             });
 
@@ -688,79 +987,21 @@ namespace grad.Controllers
                 Data = result
             });
         }
-        public class CreateCourseDto
-        {
-            public string Title { get; set; }
-            public string AcademicLevel { get; set; }
-            public int AcademicYear { get; set; }
-        }
 
-        public class AddLessonDto
-        {
-            public string Title { get; set; }
-            public string? AttachmentUrl { get; set; }
-            public int AvailableDays { get; set; }
-            public int MaxViews { get; set; }
-            public string? HomeworkUrl { get; set; }
-            public bool HasEntryTest { get; set; }
-        }
 
-        public class AddEntryTestDto
-        {
-            public string Title { get; set; }
-            public int PassingScore { get; set; }
-            public int RetakeIntervalHours { get; set; }
-            public List<AddQuestionDto> Questions { get; set; }
-        }
 
-        public class AddQuestionDto
-        {
-            public string Text { get; set; }
-            public List<AddOptionDto> Options { get; set; }
-        }
 
-        public class AddOptionDto
-        {
-            public string Text { get; set; }
-            public bool IsCorrect { get; set; }
-        }
-        public class TeacherStudentDto
-        {
-            public string Code { get; set; }        
-            public string StudentName { get; set; }
-            public string EducationLevel { get; set; }
-            public string LessonsCompleted { get; set; }
-            public double AvgScore { get; set; }
-            public string LastActive { get; set; }
-        }
-        public class StudentGradesDto
-        {
-            public string StudentName { get; set; }
-            public double EntryTest { get; set; }
-            public double Overall { get; set; }
-        }
-
-        public class LessonStatsDto
-        {
-            public string StudentName { get; set; }
-            public string Views { get; set; }
-            public int Progress { get; set; }
-            public string LastWatched { get; set; }
-            public string EntryTest { get; set; }
-            public string Homework { get; set; }
-        }
-
-      //  public class StudentStatsDto
-      //  {
+        //  public class StudentStatsDto
+        //  {
         //    public Guid StudentId { get; set; }
-           // public string Name { get; set; }
-          //  public string EducationLevel { get; set; }
+        // public string Name { get; set; }
+        //  public string EducationLevel { get; set; }
 
-         //   public int TotalLessons { get; set; }
-          //  public int CompletedLessons { get; set; }
+        //   public int TotalLessons { get; set; }
+        //  public int CompletedLessons { get; set; }
 
-          //  public decimal AvgScore { get; set; }
-          //  public DateTime? LastActive { get; set; }
-       // }
+        //  public decimal AvgScore { get; set; }
+        //  public DateTime? LastActive { get; set; }
+        // }
     }
 }

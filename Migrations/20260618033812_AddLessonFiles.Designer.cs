@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using grad.Data;
@@ -11,9 +12,11 @@ using grad.Data;
 namespace grad.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618033812_AddLessonFiles")]
+    partial class AddLessonFiles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -441,19 +444,22 @@ namespace grad.Migrations
                     b.Property<int?>("EntryTestId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("FileName")
+                        .HasColumnType("text");
+
+                    b.Property<long?>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FileType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FileUrl")
+                        .HasColumnType("text");
+
                     b.Property<bool>("HasEntryTest")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("HomeworkFileName")
-                        .HasColumnType("text");
-
-                    b.Property<long?>("HomeworkFileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("HomeworkFileType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("HomeworkFileUrl")
+                    b.Property<string>("HomeworkUrl")
                         .HasColumnType("text");
 
                     b.Property<int>("MaxViews")
