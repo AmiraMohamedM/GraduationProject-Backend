@@ -1,5 +1,6 @@
 using grad.Data;
 using grad.DTOs;
+using grad.Interfaces;
 using grad.Models;
 using grad.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -20,15 +21,18 @@ namespace grad.Controllers
         private readonly AppDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IStatisticsService _statisticsService;
+        private readonly IPhotoService _photoService;
 
         public StudentController(
             AppDbContext db,
             UserManager<ApplicationUser> userManager,
-            IStatisticsService statisticsService)
+            IStatisticsService statisticsService,
+            IPhotoService photoService)
         {
             _db = db;
             _userManager = userManager;
             _statisticsService = statisticsService;
+            _photoService = photoService;
         }
 
       
@@ -52,7 +56,7 @@ namespace grad.Controllers
         [HttpGet("home")]
         public async Task<IActionResult> GetHome()
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!); // استخدمي الطريقة المباشرة دي أضمن
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!); 
             var user = await _userManager.FindByIdAsync(userId.ToString());
 
             var student = await _db.Students
@@ -214,7 +218,7 @@ namespace grad.Controllers
         [HttpGet("profile")]
         public async Task<IActionResult> GetProfile()
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!); 
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var user = await _userManager.FindByIdAsync(userId.ToString());
 
             var student = await _db.Students
@@ -230,85 +234,81 @@ namespace grad.Controllers
                 FirstName = user.firstname,
                 LastName = user.lastname,
                 Email = user.Email ?? string.Empty,
-                Phone = user.PhoneNumber, 
+                Phone = user.PhoneNumber,
                 LanguagePref = user.language_pref,
+                ImageUrl = user.ProfileImageUrl,
+                AcademicLevel = student.AcademicLevel,
+                ClassLevel = student.AcademicYear.ToString(),
 
-                AcademicLevel = student.AcademicLevel, 
-                ClassLevel = student.AcademicYear.ToString(), 
-
-                ParentEmail = student.parent_email
+                ParentPhoneNumber = student.ParentPhoneNumber
             });
         }
-
-        [HttpPut("profile")]
-        public async Task<IActionResult> UpdateProfile([FromBody] UpdateStudentProfileDto dto)
+      /*  [HttpPost("profile/photo")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> AddPhoto([FromForm] IFormFile file)
         {
-            var userId = GetCurrentUserId();
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
             var user = await _userManager.FindByIdAsync(userId.ToString());
-            if (user == null) return NotFound(new { message = "User not found." });
 
-            if (!string.IsNullOrWhiteSpace(dto.FirstName)) user.firstname = dto.FirstName;
-            if (!string.IsNullOrWhiteSpace(dto.LastName)) user.lastname = dto.LastName;
-            if (!string.IsNullOrWhiteSpace(dto.Phone)) user.Phone = dto.Phone;
-            if (!string.IsNullOrWhiteSpace(dto.LanguagePref)) user.language_pref = dto.LanguagePref;
+            if (user == null)
+                return NotFound("User not found");
 
-            var result = await _userManager.UpdateAsync(user);
-            if (!result.Succeeded)
-                return BadRequest(new { message = "Profile update failed.", errors = result.Errors });
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded");
 
-            return Ok(new { message = "Profile updated successfully." });
+            if (!string.IsNullOrEmpty(user.ProfileImagePublicId))
+            {
+                await _photoService.DeletePhotoAsync(user.ProfileImagePublicId);
+            }
+
+            var result = await _photoService.UploadPhotoAsync(file);
+
+            if (result.Error != null)
+                return BadRequest(result.Error.Message);
+
+            user.ProfileImageUrl = result.SecureUrl?.AbsoluteUri;
+            user.ProfileImagePublicId = result.PublicId;
+
+            await _userManager.UpdateAsync(user);
+
+            return Ok(new { imageUrl = user.ProfileImageUrl });
         }
+        [HttpDelete("profile/deletephoto")]
+        public async Task<IActionResult> DeletePhoto()
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        //[HttpGet("notifications")]
-        //public async Task<IActionResult> GetNotifications()
-        //{
-        //    var userId = GetCurrentUserId();
+            var user = await _userManager.FindByIdAsync(userId.ToString());
 
-        //    var notifications = await _db.Notifications
-        //        .AsNoTracking()
-        //        .Where(n => n.UserId == userId)
-        //        .OrderByDescending(n => n.CreatedAt)
-        //        .Select(n => new NotificationDto
-        //        {
-        //            Id = n.Id,
-        //            Title = n.Title,
-        //            Body = n.Body,
-        //            Type = n.Type,
-        //            IsRead = n.IsRead,
-        //            CreatedAt = n.CreatedAt
-        //        })
-        //        .ToListAsync();
+            if (user == null)
+                return NotFound(new
+                {
+                    message = "User not found"
+                });
 
-        //    return Ok(notifications);
-        //}
+            if (string.IsNullOrEmpty(user.ProfileImagePublicId))
+                return BadRequest(new
+                {
+                    message = "No photo to delete"
+                });
 
-        //[HttpPut("notifications/{id:int}/read")]
-        //public async Task<IActionResult> MarkNotificationRead(int id)
-        //{
-        //    var userId = GetCurrentUserId();
-        //    var notif = await _db.Notifications
-        //        .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+            await _photoService.DeletePhotoAsync(user.ProfileImagePublicId);
 
-        //    if (notif == null) return NotFound(new { message = "Notification not found." });
+            user.ProfileImageUrl = null;
+            user.ProfileImagePublicId = null;
 
-        //    notif.IsRead = true;
-        //    await _db.SaveChangesAsync();
-        //    return Ok(new { message = "Marked as read." });
-        //}
+            await _userManager.UpdateAsync(user);
 
-        //[HttpPut("notifications/read-all")]
-        //public async Task<IActionResult> MarkAllNotificationsRead()
-        //{
-        //    var userId = GetCurrentUserId();
-        //    var unread = await _db.Notifications
-        //        .Where(n => n.UserId == userId && !n.IsRead)
-        //        .ToListAsync();
-
-        //    unread.ForEach(n => n.IsRead = true);
-        //    await _db.SaveChangesAsync();
-        //    return Ok(new { message = $"{unread.Count} notification(s) marked as read." });
-        //}
-
+            return Ok(new
+            {
+                success = true,
+                message = "Photo deleted successfully",
+                imageUrl = (string?)null
+            });
+        }
+    
+*/
 
         [HttpGet("messages")]
         public async Task<IActionResult> GetConversations()

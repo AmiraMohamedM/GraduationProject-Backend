@@ -11,5 +11,6 @@
         public string ParentEmail { get; set; }
         public string LanguagePref { get; set; }
         public string DeviceId { get; set; }
+        public string ParentPhoneNumber { get; internal set; }
     }
 }

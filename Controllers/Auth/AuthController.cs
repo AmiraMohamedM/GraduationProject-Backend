@@ -54,7 +54,7 @@ public class AuthController : ControllerBase
 
             student = await _db.Students
            .Where(s => s.user_id == user.Id)
-           .Select(s => new { s.parent_email, s.AcademicLevel, s.AcademicYear })
+           .Select(s => new { s.ParentPhoneNumber, s.AcademicLevel, s.AcademicYear })
            .FirstOrDefaultAsync(),
 
             teacher = await _db.Teachers
@@ -105,7 +105,7 @@ public class AuthController : ControllerBase
             //}
             if (!string.IsNullOrWhiteSpace(req.AcademicLevel)) student.AcademicLevel = req.AcademicLevel;
             if (req.AcademicYear.HasValue) student.AcademicYear = req.AcademicYear.Value;
-            if (!string.IsNullOrWhiteSpace(req.ParentEmail)) student.parent_email = req.ParentEmail;
+            if (!string.IsNullOrWhiteSpace(req.ParentEmail)) student.ParentPhoneNumber = req.ParentEmail;
         }
 
         var teacher = await _db.Teachers.FirstOrDefaultAsync(t => t.user_id == user.Id);

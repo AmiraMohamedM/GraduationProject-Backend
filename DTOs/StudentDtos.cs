@@ -74,8 +74,9 @@ namespace grad.DTOs
         public string? Phone { get; set; }
         public string? LanguagePref { get; set; }
         public string? AcademicLevel { get; set; }
+        public string? ImageUrl { get; set; }
         public string? ClassLevel { get; set; }
-        public string? ParentEmail { get; set; }
+        public string? ParentPhoneNumber { get; set; }
     }
 
     public class UpdateStudentProfileDto
