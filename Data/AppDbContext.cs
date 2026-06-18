@@ -16,7 +16,7 @@ namespace grad.Data
         public DbSet<ModeratorTeacher> ModeratorTeachers { get; set; }
         public DbSet<AcademicLevel> AcademicLevels { get; set; }
         public DbSet<ClassLevel> ClassLevels { get; set; }
-
+        public DbSet<LessonFile> LessonFiles { get; set; }
         public DbSet<Course> Courses { get; set; }
         public DbSet<CourseSession> CourseSessions { get; set; }
         public DbSet<Quiz> Quizzes { get; set; }

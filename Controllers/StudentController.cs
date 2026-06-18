@@ -121,9 +121,9 @@ namespace grad.Controllers
                 UnreadNotifications = unread,
                 Statistics = new StudentDashboardStatsDto
                 {
-                    Absence = stats.Absence,
-                    TasksSubmitted = stats.Tasks,
-                    QuizzesTaken = stats.Quiz,
+                    Absence = (int)stats.Absence,
+                    TasksSubmitted = (int)stats.Tasks,
+                    QuizzesTaken = (int)stats.Quiz,
                     OverallProgress = overallProgress
                 },
                 RecentCourses = recentCourses
@@ -206,9 +206,9 @@ namespace grad.Controllers
                 TotalEnrolled = enrollments.Count,
                 CompletedCourses = completedCourses,
                 AverageQuizScore = avgQuizScore,
-                TotalAbsences = stats.Absence,
-                TotalHomeworkSubmitted = stats.Tasks,
-                TotalQuizzesTaken = stats.Quiz,
+                TotalAbsences = (int)stats.Absence,
+                TotalHomeworkSubmitted = (int)stats.Tasks,
+                TotalQuizzesTaken = (int)stats.Quiz,
                 CoursesActivity = activity
             });
         }
@@ -243,7 +243,7 @@ namespace grad.Controllers
                 ParentPhoneNumber = student.ParentPhoneNumber
             });
         }
-        [HttpPost("profile/photo")]
+      /*  [HttpPost("profile/photo")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> AddPhoto([FromForm] IFormFile file)
         {
@@ -308,7 +308,7 @@ namespace grad.Controllers
             });
         }
     
-
+*/
 
         [HttpGet("messages")]
         public async Task<IActionResult> GetConversations()
@@ -661,7 +661,7 @@ namespace grad.Controllers
             if (session == null)
                 return NotFound(new { message = "Session not found." });
 
-            if (string.IsNullOrEmpty(session.HomeworkUrl))
+            if (string.IsNullOrEmpty(session.HomeworkFileUrl))
                 return BadRequest(new { message = "This session does not have a homework assignment." });
 
             var enrolled = await _db.Enrollments

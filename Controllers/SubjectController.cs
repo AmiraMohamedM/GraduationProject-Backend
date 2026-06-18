@@ -123,14 +123,20 @@ namespace grad.Controllers
                 .AnyAsync(e => e.StudentId == studentId && e.CourseId == courseId);
 
             if (!enrolled)
-                return Forbid(); 
+                return Forbid();
 
             var course = await _db.Courses
                 .AsNoTracking()
-                .Include(c => c.Teacher).ThenInclude(t => t.User)
+                .Include(c => c.Teacher)
+                    .ThenInclude(t => t.User)
+
                 .Include(c => c.CourseSessions)
-                    .ThenInclude(cs => cs.EntryTest)
-                        .ThenInclude(q => q != null ? q.Questions : null)
+                    .ThenInclude(s => s.Files)
+
+                .Include(c => c.CourseSessions)
+                    .ThenInclude(s => s.EntryTest)
+                        .ThenInclude(t => t.Questions)
+
                 .FirstOrDefaultAsync(c => c.Id == courseId);
 
             if (course == null)
@@ -211,10 +217,22 @@ namespace grad.Controllers
                     ViewsRemaining         = viewsRemaining,
                     IsWatched              = viewsUsed > 0,
                     WatchProgressPercent   = lp?.ProgressPercent ?? 0.0,
-                    HasAttachment          = !string.IsNullOrEmpty(s.AttachmentUrl),
-                    AttachmentUrl          = s.AttachmentUrl,
-                    HasHomework            = !string.IsNullOrEmpty(s.HomeworkUrl),
-                    HomeworkUrl            = s.HomeworkUrl,
+                    HasAttachments = s.Files.Any(),
+
+                    Files = s.Files.Select(f => new LessonFileDto
+                    {
+                        Id = f.Id,
+                        FileName = f.FileName,
+                        FileType = f.FileType,
+                        FileSize = f.FileSize,
+                        FileUrl = f.FileUrl
+                    }).ToList(),
+                    HasHomework = !string.IsNullOrEmpty(s.HomeworkFileUrl),
+
+                    HomeworkFileUrl = s.HomeworkFileUrl,
+                    HomeworkFileName = s.HomeworkFileName,
+                    HomeworkFileType = s.HomeworkFileType,
+                    HomeworkFileSize = s.HomeworkFileSize,
                     HasEntryTest           = hasEntryTest,
                     EntryTestPassed        = entryTestPassed,
                     EntryTestBestScore     = entryTestBestScore,

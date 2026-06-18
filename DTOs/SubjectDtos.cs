@@ -47,10 +47,17 @@ namespace grad.DTOs
         public int ViewsRemaining { get; set; }
         public bool IsWatched { get; set; }
         public double WatchProgressPercent { get; set; }
-        public bool HasAttachment { get; set; }
-        public string? AttachmentUrl { get; set; }
+        public bool HasAttachments { get; set; }
+
+        public List<LessonFileDto> Files { get; set; } = new();
         public bool HasHomework { get; set; }
-        public string? HomeworkUrl { get; set; }
+        public string? HomeworkFileUrl { get; set; }
+
+        public string? HomeworkFileName { get; set; }
+
+        public string? HomeworkFileType { get; set; }
+
+        public long? HomeworkFileSize { get; set; }
         public bool HasEntryTest { get; set; }
         public bool? EntryTestPassed { get; set; }
         public decimal? EntryTestBestScore { get; set; }
