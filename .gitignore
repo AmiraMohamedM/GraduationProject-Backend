@@ -3,7 +3,6 @@ bin/
 obj/
 out/
 *.user
-PythonService/Model/.env
 PythonService/Model/model.safetensors
 PythonService/Model/config.json
 PythonService/Model/generation_config.json
@@ -11,11 +10,6 @@ PythonService/Model/tokenizer_config.json
 PythonService/Model/tokenizer.json
 PythonService/Model/__pycache__
 PythonService/.env
-PythonService/model.safetensors
-PythonService/config.json
-PythonService/generation_config.json
-PythonService/tokenizer_config.json
-PythonService/tokenizer.json
 PythonService/__pycache__
 wwwroot/uploads/
 wwwroot/homeworks/

@@ -1,8 +1,10 @@
+import os
 import torch
 from transformers import T5ForConditionalGeneration, T5Tokenizer
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-MODEL_DIR         = "PythonService/"
+BASE_DIR          = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR         = os.path.join(BASE_DIR, "Model")
 MAX_INPUT_LENGTH  = 512
 MAX_TARGET_LENGTH = 128
 
