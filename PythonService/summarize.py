@@ -2,7 +2,7 @@ import torch
 from transformers import T5ForConditionalGeneration, T5Tokenizer
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-MODEL_DIR         = "/home/mostafa/Desktop/sumrmize/Model"
+MODEL_DIR         = "PythonService/"
 MAX_INPUT_LENGTH  = 512
 MAX_TARGET_LENGTH = 128
 

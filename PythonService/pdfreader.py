@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 # ── Configuration ────────────────────────────────────────────
-PDF_PATH = "/run/media/mostafa/New Volume/sumrmize/Model/CH-1.pdf"   # <-- set your PDF path here
+PDF_PATH = ""   # <-- set your PDF path here
 OUTPUT   = "result.txt"             # set to a filename to save, e.g. "result.txt"
 PAGES    = None             # set to a range string, e.g. "1-5" or "1,3,7-10"
 ENGINE   = "pdfplumber"     # "pdfplumber" or "pypdf"
