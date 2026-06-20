@@ -91,13 +91,18 @@ public class AdminController : ControllerBase
             .Distinct()
             .CountAsync();
 
-        var enrollmentBySubject = await _db.Enrollments
+        var enrollmentByCourse = await _db.Enrollments
             .Where(e => e.Course.Teacher.admin_id == adminId)
-            .GroupBy(e => e.Course.CourseSessions)
+            .GroupBy(e => new
+            {
+                e.Course.Id,
+                e.Course.Title
+            })
             .Select(g => new
             {
-                subject = g.Key,
-                students = g.Count()
+                CourseId = g.Key.Id,
+                CourseTitle = g.Key.Title,
+                Students = g.Count()
             })
             .ToListAsync();
 
@@ -119,7 +124,7 @@ public class AdminController : ControllerBase
             totalStudents,
             totalCourses,
 
-            enrollmentBySubject,
+            enrollmentByCourse,
             recentActivities
         });
     }

@@ -34,7 +34,7 @@ namespace grad.Services
                 : 0;
 
             var totalHomework = await _db.CourseSessions
-                .CountAsync(cs => enrolledCourseIds.Contains(cs.CourseId) && cs.HomeworkUrl != null);
+                .CountAsync(cs => enrolledCourseIds.Contains(cs.CourseId) && cs.HomeworkFileUrl != null);
             var submittedHomework = await _db.HomeworkSubmissions
                 .CountAsync(h => h.StudentId == studentId);
             var tasksPercent = totalHomework > 0
@@ -76,7 +76,7 @@ namespace grad.Services
                 .ToListAsync();
 
             var allHomeworkCounts = await _db.CourseSessions
-                .Where(cs => cs.HomeworkUrl != null)
+                .Where(cs => cs.HomeworkFileUrl != null)
                 .GroupBy(cs => cs.CourseId)
                 .Select(g => new { CourseId = g.Key, Count = g.Count() })
                 .ToListAsync();

@@ -32,7 +32,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
-
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.Configure<CloudinarySettings>(
