@@ -39,7 +39,6 @@ namespace grad.Controllers
         }
 
       
-        // DASHBOARD
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetDashboard()
         {
@@ -72,6 +71,7 @@ namespace grad.Controllers
                 .Take(5)
                 .Select(s => new
                 {
+                    s.user_id,
                     s.student_id,
                     Name = s.User.firstname + " " + s.User.lastname,
                     s.User.Email,
@@ -136,7 +136,6 @@ namespace grad.Controllers
             });
         }
 
-        // MY-STUDENTS
        
         [HttpGet("my-students")]
         public async Task<IActionResult> GetMyStudents()
@@ -150,6 +149,7 @@ namespace grad.Controllers
                     e.Course.Teacher.ModeratorId == moderatorId))
                 .Select(s => new
                 {
+                    UserId = s.user_id,
                     StudentId = s.student_id,
                     FullName = s.User.firstname + " " + s.User.lastname,
                     EducationLevel = s.AcademicLevel + " - " + s.AcademicYear,
@@ -240,6 +240,8 @@ namespace grad.Controllers
 
             var students = await query.Select(s => new
             {
+                UserId = s.user_id,
+
                 StudentId = s.student_id,
 
                 FullName = s.User.firstname + " " + s.User.lastname,
@@ -304,6 +306,7 @@ namespace grad.Controllers
 
             return Ok(new
             {
+                student.user_id,
                 student.student_id,
                 Name = student.User.firstname + " " + student.User.lastname,
                 student.User.Email,
