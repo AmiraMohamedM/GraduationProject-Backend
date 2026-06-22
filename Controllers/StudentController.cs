@@ -243,9 +243,9 @@ namespace grad.Controllers
                 ParentPhoneNumber = student.ParentPhoneNumber
             });
         }
-      /*  [HttpPost("profile/photo")]
+        [HttpPost("profile/photo")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> AddPhoto([FromForm] IFormFile file)
+        public async Task<IActionResult> AddPhoto([FromForm] AddPhotoDto dto)
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -254,15 +254,13 @@ namespace grad.Controllers
             if (user == null)
                 return NotFound("User not found");
 
-            if (file == null || file.Length == 0)
+            if (dto.File == null || dto.File.Length == 0)
                 return BadRequest("No file uploaded");
 
             if (!string.IsNullOrEmpty(user.ProfileImagePublicId))
-            {
                 await _photoService.DeletePhotoAsync(user.ProfileImagePublicId);
-            }
 
-            var result = await _photoService.UploadPhotoAsync(file);
+            var result = await _photoService.UploadPhotoAsync(dto.File);
 
             if (result.Error != null)
                 return BadRequest(result.Error.Message);
@@ -307,8 +305,8 @@ namespace grad.Controllers
                 imageUrl = (string?)null
             });
         }
-    
-*/
+
+
 
         [HttpGet("messages")]
         public async Task<IActionResult> GetConversations()
