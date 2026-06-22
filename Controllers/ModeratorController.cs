@@ -419,7 +419,6 @@ namespace grad.Controllers
             return Ok(new { message = "Student updated." });
         }
 
-        // DELETE STUDENT
         [HttpDelete("students/{studentId:guid}")]
         public async Task<IActionResult> DeleteStudent(Guid studentId)
         {
@@ -431,6 +430,14 @@ namespace grad.Controllers
                 .FirstOrDefaultAsync(s => s.student_id == studentId);
 
             if (student is null) return NotFound(new { message = "Student not found." });
+
+            var notifications = _db.Notifications.Where(n => n.UserId == student.user_id);
+            _db.Notifications.RemoveRange(notifications);
+
+            var messages = _db.Messages.Where(m => m.SenderId == student.user_id || m.ReceiverId == student.user_id);
+            _db.Messages.RemoveRange(messages);
+
+            await _db.SaveChangesAsync();
 
             await _userManager.DeleteAsync(student.User);
             return Ok(new { message = "Student deleted." });
