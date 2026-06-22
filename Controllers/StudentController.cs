@@ -642,8 +642,46 @@ namespace grad.Controllers
                 Breakdown = breakdown
             });
         }
+        [HttpGet("lesson/{sessionId:int}/details")]
+        public async Task<IActionResult> GetLessonDetails(int sessionId)
+        {
+            var student = await GetCurrentStudentAsync();
+            if (student == null)
+                return NotFound(new { message = "Student profile not found." });
 
-       
+            var session = await _db.CourseSessions
+                .AsNoTracking()
+                .Include(cs => cs.Files)
+                .FirstOrDefaultAsync(cs => cs.Id == sessionId);
+
+            if (session == null)
+                return NotFound(new { message = "Session not found." });
+
+            var enrolled = await _db.Enrollments
+                .AnyAsync(e => e.StudentId == student.student_id && e.CourseId == session.CourseId);
+
+            if (!enrolled) return Forbid();
+
+            return Ok(new
+            {
+                session.Id,
+                session.Title,
+                session.MaxViews,
+                session.AvailableDays,
+                session.HomeworkFileUrl,
+                session.HomeworkFileName,
+                session.HasEntryTest,
+                Files = session.Files.Select(f => new
+                {
+                    f.Id,
+                    f.FileName,
+                    f.FileType,
+                    f.FileSize,
+                    f.FileUrl
+                })
+            });
+        }
+
 
         [HttpPost("homework/{sessionId:int}/submit")]
         public async Task<IActionResult> SubmitHomework(
