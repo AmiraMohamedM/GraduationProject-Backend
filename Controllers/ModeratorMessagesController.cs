@@ -1,4 +1,3 @@
-
 using grad.Data;
 using grad.DTOs;
 using grad.Models;
@@ -21,7 +20,6 @@ namespace grad.Controllers
             _db = db;
         }
 
-       
         [HttpGet("contacts")]
         public async Task<IActionResult> GetContacts()
         {
@@ -45,7 +43,7 @@ namespace grad.Controllers
                 var thread = messages
                     .Where(m =>
                         (m.SenderId == moderatorUserId && m.ReceiverId == studentUserId) ||
-                        (m.SenderId == studentUserId   && m.ReceiverId == moderatorUserId))
+                        (m.SenderId == studentUserId && m.ReceiverId == moderatorUserId))
                     .ToList();
 
                 var lastMsg = thread.MaxBy(m => m.SentAt);
@@ -62,15 +60,15 @@ namespace grad.Controllers
 
                 contacts.Add(new ContactDto
                 {
-                    StudentId      = studentUserId,
-                    FullName       = studentUser.FullName,
+                    StudentId = studentUserId,
+                    FullName = studentUser.FullName,
                     AvatarInitials = BuildInitials(studentUser.firstname, studentUser.lastname),
-                    LastMessage    = lastMsg.Content.Length > 60
+                    LastMessage = lastMsg.Content.Length > 60
                                         ? lastMsg.Content[..60] + "…"
                                         : lastMsg.Content,
-                    LastMessageAt  = lastMsg.SentAt,
-                    TimeAgo        = BuildTimeAgo(lastMsg.SentAt),
-                    UnreadCount    = unreadCount
+                    LastMessageAt = lastMsg.SentAt,
+                    TimeAgo = BuildTimeAgo(lastMsg.SentAt),
+                    UnreadCount = unreadCount
                 });
             }
 
@@ -81,15 +79,22 @@ namespace grad.Controllers
             return Ok(result);
         }
 
-
         [HttpGet("{studentId:guid}")]
         public async Task<IActionResult> GetThread(Guid studentId)
         {
             var moderatorUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+            var isMyStudent = await _db.Students.AnyAsync(s =>
+                s.user_id == studentId &&
+                _db.Enrollments.Any(e =>
+                    e.StudentId == s.student_id &&
+                    e.Course.Teacher.ModeratorId == moderatorUserId));
+
+            if (!isMyStudent) return Forbid();
+
             await _db.Messages
                 .Where(m =>
-                    m.SenderId   == studentId &&
+                    m.SenderId == studentId &&
                     m.ReceiverId == moderatorUserId &&
                     !m.IsRead)
                 .ExecuteUpdateAsync(setters =>
@@ -99,25 +104,24 @@ namespace grad.Controllers
                 .Include(m => m.Sender)
                 .Where(m =>
                     (m.SenderId == moderatorUserId && m.ReceiverId == studentId) ||
-                    (m.SenderId == studentId       && m.ReceiverId == moderatorUserId))
+                    (m.SenderId == studentId && m.ReceiverId == moderatorUserId))
                 .OrderBy(m => m.SentAt)
                 .Select(m => new ChatMessageDto
                 {
-                    Id              = m.Id,
-                    SenderId        = m.SenderId,
-                    SenderName      = m.Sender.FullName,
+                    Id = m.Id,
+                    SenderId = m.SenderId,
+                    SenderName = m.Sender.FullName,
                     IsFromModerator = m.SenderId == moderatorUserId,
-                    Content         = m.Content,
-                    SentAt  = DateTime.SpecifyKind(m.SentAt, DateTimeKind.Utc),
+                    Content = m.Content,
+                    SentAt = DateTime.SpecifyKind(m.SentAt, DateTimeKind.Utc),
                     TimeAgo = BuildTimeAgo(m.SentAt),
-                    IsRead  = m.IsRead
+                    IsRead = m.IsRead
                 })
                 .ToListAsync();
 
             return Ok(thread);
         }
 
-      
         [HttpPost("{studentId:guid}")]
         public async Task<IActionResult> SendMessage(
             Guid studentId,
@@ -128,17 +132,21 @@ namespace grad.Controllers
 
             var moderatorUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            var studentExists = await _db.Users.AnyAsync(u => u.Id == studentId);
-            if (!studentExists)
-                return NotFound(new { message = "Student not found." });
+            var isMyStudent = await _db.Students.AnyAsync(s =>
+                s.user_id == studentId &&
+                _db.Enrollments.Any(e =>
+                    e.StudentId == s.student_id &&
+                    e.Course.Teacher.ModeratorId == moderatorUserId));
+
+            if (!isMyStudent) return Forbid();
 
             var message = new Message
             {
-                SenderId   = moderatorUserId,
+                SenderId = moderatorUserId,
                 ReceiverId = studentId,
-                Content    = dto.Content.Trim(),
-                SentAt     = DateTime.UtcNow,
-                IsRead     = false
+                Content = dto.Content.Trim(),
+                SentAt = DateTime.UtcNow,
+                IsRead = false
             };
 
             _db.Messages.Add(message);
@@ -146,33 +154,33 @@ namespace grad.Controllers
 
             return Ok(new ChatMessageDto
             {
-                Id              = message.Id,
-                SenderId        = message.SenderId,
-                SenderName      = User.FindFirstValue(ClaimTypes.Name) ?? "Moderator",
+                Id = message.Id,
+                SenderId = message.SenderId,
+                SenderName = User.FindFirstValue(ClaimTypes.Name) ?? "Moderator",
                 IsFromModerator = true,
-                Content         = message.Content,
-                SentAt          = message.SentAt,
-                TimeAgo         = "Just now",
-                IsRead          = false
+                Content = message.Content,
+                SentAt = message.SentAt,
+                TimeAgo = "Just now",
+                IsRead = false
             });
         }
 
         private static string BuildTimeAgo(DateTime utcTime)
         {
-            var utc  = DateTime.SpecifyKind(utcTime, DateTimeKind.Utc);
+            var utc = DateTime.SpecifyKind(utcTime, DateTimeKind.Utc);
             var span = DateTime.UtcNow - utc;
 
-            if (span.TotalMinutes < 1)  return "Just now";
+            if (span.TotalMinutes < 1) return "Just now";
             if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
-            if (span.TotalHours < 24)   return $"{(int)span.TotalHours}h ago";
-            if (span.TotalDays < 7)     return $"{(int)span.TotalDays}d ago";
+            if (span.TotalHours < 24) return $"{(int)span.TotalHours}h ago";
+            if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
             return utc.ToString("MMM dd, yyyy");
         }
 
         private static string BuildInitials(string first, string last)
         {
             var f = string.IsNullOrWhiteSpace(first) ? "?" : first[0].ToString().ToUpper();
-            var l = string.IsNullOrWhiteSpace(last)  ? ""  : last[0].ToString().ToUpper();
+            var l = string.IsNullOrWhiteSpace(last) ? "" : last[0].ToString().ToUpper();
             return f + l;
         }
     }
