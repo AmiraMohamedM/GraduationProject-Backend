@@ -17,7 +17,8 @@ namespace grad.Models
         public string AcademicLevel { get; set; } = string.Empty;
 
         public int AcademicYear { get; set; }
-
+        public string? Introduction { get; set; }
+        public string? PictureUrl { get; set; }
         public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
         public ICollection<CourseSession> CourseSessions { get; set; }
             = new List<CourseSession>();

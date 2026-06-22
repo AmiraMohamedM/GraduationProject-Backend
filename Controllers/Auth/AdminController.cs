@@ -212,22 +212,20 @@ public class AdminController : ControllerBase
         return Ok(new { message = "Teacher created successfully.", id = user.Id });
     }
 
-    [HttpPut("UpdateTeachers/{id}")]
-    public async Task<IActionResult> UpdateTeacher(Guid id, [FromBody] UpdateTeacherRequest req)
+    [HttpPut("UpdateTeachers/{userId}")]
+    public async Task<IActionResult> UpdateTeacher(Guid userId, [FromBody] UpdateTeacherRequest req)
     {
         var adminId = GetAdminId();
 
-
         var teacher = await _db.Teachers
             .Include(t => t.User)
-            .FirstOrDefaultAsync(t => t.teacher_id == id && t.admin_id == adminId);
+            .FirstOrDefaultAsync(t => t.user_id == userId && t.admin_id == adminId);
 
         if (teacher == null)
             return NotFound("Teacher not found.");
 
         if (teacher.User == null)
             return BadRequest("Teacher has no user account.");
-
 
         if (!string.IsNullOrEmpty(req.firstname))
             teacher.User.firstname = req.firstname;
@@ -242,31 +240,30 @@ public class AdminController : ControllerBase
             teacher.User.Email = req.email;
 
         var result = await _userManager.UpdateAsync(teacher.User);
+
         if (!result.Succeeded)
             return BadRequest(result.Errors);
 
         await _db.SaveChangesAsync();
 
-
         await _logger.Log(adminId,
-            $"Teacher {teacher.User.firstname} {teacher.User.lastname} updated"
-        );
+            $"Teacher {teacher.User.firstname} {teacher.User.lastname} updated");
 
         return Ok(new { message = "Teacher updated successfully." });
     }
 
-    [HttpDelete("DeleteTeachers/{id}")]
-    public async Task<IActionResult> DeleteTeacher(Guid id)
+    [HttpDelete("DeleteTeachers/{userId}")]
+    public async Task<IActionResult> DeleteTeacher(Guid userId)
     {
         var adminId = GetAdminId();
 
         var teacher = await _db.Teachers
-            .FirstOrDefaultAsync(t => t.teacher_id == id && t.admin_id == adminId);
+            .FirstOrDefaultAsync(t => t.user_id == userId && t.admin_id == adminId);
 
         if (teacher == null)
             return NotFound("Teacher not found.");
 
-        var user = await _userManager.FindByIdAsync(teacher.user_id.ToString());
+        var user = await _userManager.FindByIdAsync(userId.ToString());
 
         if (user != null)
             await _userManager.DeleteAsync(user);

@@ -232,7 +232,8 @@ namespace grad.Controllers
                     c.Title,
                     c.AcademicLevel,
                     c.AcademicYear,
-
+                    c.Introduction,
+                    c.PictureUrl,
                     SessionsCount = c.CourseSessions.Count(),
 
                     StudentsCount = c.Enrollments
@@ -245,20 +246,49 @@ namespace grad.Controllers
             return Ok(subjects);
         }
 
-       
-        
+
+
         [HttpPost("subjects")]
-        public async Task<IActionResult> CreateSubject(CreateCourseDto dto)
+        public async Task<IActionResult> CreateSubject([FromForm] CreateCourseDto dto)
         {
             var teacher = await GetCurrentTeacherAsync();
-            if (teacher == null) return NotFound(new { message = "Teacher profile not found." });
+            if (teacher == null)
+                return NotFound(new { message = "Teacher profile not found." });
+
+            string? imagePath = null;
+
+            if (dto.Picture != null)
+            {
+                var uploadsFolder = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "images"
+                );
+
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = Guid.NewGuid().ToString() +
+                               Path.GetExtension(dto.Picture.FileName);
+
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await dto.Picture.CopyToAsync(stream);
+                }
+
+                imagePath = $"/images/{fileName}";
+            }
 
             var subject = new Course
             {
                 TeacherId = teacher.teacher_id,
                 Title = dto.Title,
                 AcademicLevel = dto.AcademicLevel,
-                AcademicYear = dto.AcademicYear
+                AcademicYear = dto.AcademicYear,
+                Introduction = dto.Introduction,
+                PictureUrl = imagePath
             };
 
             _db.Courses.Add(subject);
@@ -267,10 +297,12 @@ namespace grad.Controllers
             return Ok(subject);
         }
 
-       
-        
+
+
         [HttpPut("subjects/{courseId}")]
-        public async Task<IActionResult> UpdateSubject(int courseId, CreateCourseDto dto)
+        public async Task<IActionResult> UpdateSubject(
+            int courseId,
+            [FromForm] CreateCourseDto dto)
         {
             var teacher = await GetCurrentTeacherAsync();
             if (teacher == null) return Unauthorized();
@@ -283,13 +315,34 @@ namespace grad.Controllers
             subject.Title = dto.Title;
             subject.AcademicLevel = dto.AcademicLevel;
             subject.AcademicYear = dto.AcademicYear;
+            subject.Introduction = dto.Introduction;
 
-            _db.Courses.Update(subject);
+            if (dto.Picture != null)
+            {
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images");
+
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = Guid.NewGuid() + Path.GetExtension(dto.Picture.FileName);
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await dto.Picture.CopyToAsync(stream);
+                }
+
+                subject.PictureUrl = $"/images/{fileName}";
+            }
+
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = "Updated", subject });
+            return Ok(new
+            {
+                message = "Updated",
+                subject
+            });
         }
-
         [HttpDelete("subjects/{courseId}")]
         public async Task<IActionResult> DeleteSubject(int courseId)
         {
@@ -330,6 +383,8 @@ namespace grad.Controllers
                 subject.Title,
                 subject.AcademicLevel,
                 subject.AcademicYear,
+                subject.Introduction,
+                subject.PictureUrl,
                 Sessions = subject.CourseSessions.Select(l => new
                 {
                     l.Id,
@@ -361,6 +416,8 @@ namespace grad.Controllers
             });
         }
 
+        [RequestSizeLimit(1024 * 1024 * 1024)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 1024 * 1024 * 1024)]
         [HttpPost("subjects/{courseId}/lessons")]
         public async Task<IActionResult> AddLesson(
             int courseId,

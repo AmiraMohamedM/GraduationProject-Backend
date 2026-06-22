@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Http.Features;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +34,14 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>()
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHttpClient();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 1024 * 1024 * 1024;
+});
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 1024 * 1024 * 1024; 
+});
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.Configure<CloudinarySettings>(
@@ -140,12 +149,19 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+
+app.UseStaticFiles();      
+
 app.UseRouting();
-app.UseAuthentication();
-app.UseAuthorization();
-app.UseStaticFiles();
+
+app.UseCors("AllowAll");   
+
+app.UseAuthentication();  
+app.UseAuthorization();    
+
 app.MapControllers();
+
+app.Run();
 
 using (var scope = app.Services.CreateScope())
 {
