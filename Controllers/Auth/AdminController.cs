@@ -419,19 +419,21 @@ public class AdminController : ControllerBase
         var moderator = await _db.Moderators
             .Include(m => m.User)
             .Include(m => m.AssignedTeachers)
-            .FirstOrDefaultAsync(m => m.User.Id == id && m.admin_id == adminId);
+            .FirstOrDefaultAsync(m => m.user_id == id && m.admin_id == adminId);
 
         if (moderator == null) return NotFound("Moderator not found.");
 
+        var fullName = $"{moderator.User?.firstname} {moderator.User?.lastname}";
+
         _db.ModeratorTeachers.RemoveRange(moderator.AssignedTeachers);
+
+        _db.Moderators.Remove(moderator);
         await _db.SaveChangesAsync();
 
-        await _userManager.DeleteAsync(moderator.User);
-        await _db.SaveChangesAsync();
+        if (moderator.User != null)
+            await _userManager.DeleteAsync(moderator.User);
 
-        await _logger.Log(adminId,
-            $"Moderator {moderator.User.firstname} {moderator.User.lastname} deleted"
-        );
+        await _logger.Log(adminId, $"Moderator {fullName} deleted");
 
         return Ok(new { message = "Moderator deleted successfully." });
     }
