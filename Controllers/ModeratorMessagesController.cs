@@ -63,6 +63,7 @@ namespace grad.Controllers
                     StudentId = studentUserId,
                     FullName = studentUser.FullName,
                     AvatarInitials = BuildInitials(studentUser.firstname, studentUser.lastname),
+                    ProfileImage = studentUser.ProfileImageUrl,
                     LastMessage = lastMsg.Content.Length > 60
                                         ? lastMsg.Content[..60] + "…"
                                         : lastMsg.Content,
