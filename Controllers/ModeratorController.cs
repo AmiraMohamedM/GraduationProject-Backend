@@ -38,7 +38,7 @@ namespace grad.Controllers
             _logger = logger;
         }
 
-      
+
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetDashboard()
         {
@@ -136,7 +136,7 @@ namespace grad.Controllers
             });
         }
 
-       
+
         [HttpGet("my-students")]
         public async Task<IActionResult> GetMyStudents()
         {
@@ -212,15 +212,18 @@ namespace grad.Controllers
             return Ok(teachers);
         }
 
-        // ─────────────────────────────────────────────
-        // GET ALL STUDENTS (search/filter — no moderator scope required by design,
         [HttpGet("students")]
         public async Task<IActionResult> GetStudents(
-            [FromQuery] string? search,
-            [FromQuery] string? academicLevel)
+     [FromQuery] string? search,
+     [FromQuery] string? academicLevel)
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
             var query = _db.Students
                 .Include(s => s.User)
+                .Where(s => _db.Enrollments.Any(e =>
+                    e.StudentId == s.student_id &&
+                    e.Course.Teacher.ModeratorId == moderatorId))
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(search))
@@ -234,55 +237,48 @@ namespace grad.Controllers
 
             if (!string.IsNullOrEmpty(academicLevel))
             {
-                query = query.Where(s => s.AcademicLevel.ToLower() == academicLevel.ToLower());
+                query = query.Where(s =>
+                    s.AcademicLevel.ToLower() == academicLevel.ToLower());
             }
-            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var students = await query.Select(s => new
             {
                 UserId = s.user_id,
-
                 StudentId = s.student_id,
-
                 FullName = s.User.firstname + " " + s.User.lastname,
-
                 EducationLevel = s.AcademicLevel + " - " + s.AcademicYear,
-
                 AssignedTeachers = _db.StudentTeachers
                     .Where(st => st.StudentId == s.student_id &&
                                  st.Teacher.ModeratorId == moderatorId)
                     .Select(st => st.Teacher.User.firstname + " " +
                                   st.Teacher.User.lastname)
                     .ToList(),
-
                 Subjects = _db.Enrollments
                     .Where(e => e.StudentId == s.student_id &&
                                 e.Course.Teacher.ModeratorId == moderatorId)
                     .Select(e => e.Course.Title)
                     .Distinct()
                     .ToList(),
-
                 AvgScore = _db.StudentQuizResults
                     .Where(qr => qr.StudentId == s.student_id)
                     .Average(qr => (double?)qr.Percentage) ?? 0,
-
                 MissingDays = _db.StudentAbsences
                     .Count(a => a.StudentId == s.student_id),
-
                 Joined = s.User.CreatedAt.ToString("MMM dd, yyyy"),
-
                 Email = s.User.Email,
-
                 ParentPhone = s.ParentPhoneNumber
             })
             .ToListAsync();
+
             return Ok(students);
         }
 
-        // GET SINGLE STUDENT
         [HttpGet("students/{studentId:guid}")]
         public async Task<IActionResult> GetStudent(Guid studentId)
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (!await IsMyStudent(studentId, moderatorId)) return Forbid();
+
             var student = await _db.Students
                 .Include(s => s.User)
                 .Include(s => s.AssignedTeachers)
@@ -401,6 +397,9 @@ namespace grad.Controllers
         [HttpPut("students/{studentId:guid}")]
         public async Task<IActionResult> UpdateStudent(Guid studentId, [FromBody] UpdateStudentDto dto)
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (!await IsMyStudent(studentId, moderatorId)) return Forbid();
+
             var student = await _db.Students
                 .Include(s => s.User)
                 .FirstOrDefaultAsync(s => s.student_id == studentId);
@@ -410,7 +409,7 @@ namespace grad.Controllers
             student.User.firstname = dto.FirstName ?? student.User.firstname;
             student.User.lastname = dto.LastName ?? student.User.lastname;
             student.User.Email = dto.Email ?? student.User.Email;
-            student.ParentPhoneNumber = dto.ParentPhoneNumber ?? student.ParentPhoneNumber  ;
+            student.ParentPhoneNumber = dto.ParentPhoneNumber ?? student.ParentPhoneNumber;
             if (!string.IsNullOrEmpty(dto.AcademicLevel)) student.AcademicLevel = dto.AcademicLevel;
             if (dto.AcademicYear.HasValue) student.AcademicYear = dto.AcademicYear.Value;
 
@@ -424,6 +423,9 @@ namespace grad.Controllers
         [HttpDelete("students/{studentId:guid}")]
         public async Task<IActionResult> DeleteStudent(Guid studentId)
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (!await IsMyStudent(studentId, moderatorId)) return Forbid();
+
             var student = await _db.Students
                 .Include(s => s.User)
                 .FirstOrDefaultAsync(s => s.student_id == studentId);
@@ -493,6 +495,9 @@ namespace grad.Controllers
             Guid studentId,
             [FromBody] ResetPasswordDirectDto dto)
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (!await IsMyStudent(studentId, moderatorId)) return Forbid();
+
             var student = await _db.Students
                 .Include(s => s.User)
                 .FirstOrDefaultAsync(s => s.student_id == studentId);
@@ -511,6 +516,9 @@ namespace grad.Controllers
         [HttpPost("students/{studentId:guid}/enroll")]
         public async Task<IActionResult> EnrollStudent(Guid studentId, [FromBody] EnrollStudentDto dto)
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (!await IsMyStudent(studentId, moderatorId)) return Forbid();
+
             var student = await _db.Students.FindAsync(studentId);
             if (student is null) return NotFound(new { message = "Student not found." });
 
@@ -576,9 +584,11 @@ namespace grad.Controllers
         [HttpGet("courses")]
         public async Task<IActionResult> GetAllCourses()
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
             var courses = await _db.Courses
                 .Include(c => c.Teacher).ThenInclude(t => t.User)
-                .Where(c => c.Teacher.is_approved)
+                .Where(c => c.Teacher.ModeratorId == moderatorId && c.Teacher.is_approved)
                 .Select(c => new
                 {
                     c.Id,
@@ -594,6 +604,9 @@ namespace grad.Controllers
         [HttpPost("students/{studentId:guid}/notify")]
         public async Task<IActionResult> NotifyStudent(Guid studentId, [FromBody] SendNotificationDto dto)
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (!await IsMyStudent(studentId, moderatorId)) return Forbid();
+
             var student = await _db.Students.FindAsync(studentId);
             if (student is null) return NotFound(new { message = "Student not found." });
 
@@ -622,6 +635,7 @@ namespace grad.Controllers
                     e.Course.Teacher.ModeratorId == moderatorId))
                 .Select(s => new
                 {
+                    UserId = s.user_id,
                     StudentId = s.student_id,
                     FirstName = s.User.firstname,
                     LastName = s.User.lastname,
@@ -682,12 +696,11 @@ namespace grad.Controllers
         [HttpPost("students/{studentId:guid}/absences")]
         public async Task<IActionResult> RecordAbsence(Guid studentId, [FromBody] RecordAbsenceDto dto)
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (!await IsMyStudent(studentId, moderatorId)) return Forbid();
+
             var student = await _db.Students.FindAsync(studentId);
             if (student is null) return NotFound(new { message = "Student not found." });
-
-            var moderatorId = Guid.TryParse(
-                User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
-                out var mid) ? mid : (Guid?)null;
 
             var absence = new grad.Models.StudentAbsence
             {
@@ -713,6 +726,9 @@ namespace grad.Controllers
         [HttpDelete("students/{studentId:guid}/absences/{absenceId:int}")]
         public async Task<IActionResult> DeleteAbsence(Guid studentId, int absenceId)
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (!await IsMyStudent(studentId, moderatorId)) return Forbid();
+
             var absence = await _db.StudentAbsences
                 .FirstOrDefaultAsync(a => a.Id == absenceId && a.StudentId == studentId);
 
@@ -758,13 +774,16 @@ namespace grad.Controllers
             return dt.ToString("MMM dd, yyyy");
         }
 
+
         // TEACHERS LIST (global approved — used by assignment dropdowns)
         [HttpGet("teachers")]
         public async Task<IActionResult> GetTeachers()
         {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
             var teachers = await _db.Teachers
                 .Include(t => t.User)
-                .Where(t => t.is_approved)
+                .Where(t => t.ModeratorId == moderatorId && t.is_approved)
                 .Select(t => new
                 {
                     t.teacher_id,
@@ -780,10 +799,15 @@ namespace grad.Controllers
 
             return Ok(teachers);
         }
+        private async Task<bool> IsMyStudent(Guid studentId, Guid moderatorId) =>
+         await _db.Enrollments.AnyAsync(e =>
+             e.StudentId == studentId &&
+             e.Course.Teacher.ModeratorId == moderatorId);
+
     }
 
 
-    public class UpdateStudentDto
+        public class UpdateStudentDto
     {
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
