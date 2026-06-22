@@ -26,6 +26,8 @@ namespace grad.DTOs
         public int CourseId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string TeacherName { get; set; } = string.Empty;
+        public string? Introduction { get; set; }
+        public string? PictureUrl { get; set; }
         public int ProgressPercent { get; set; }
         public int TotalSessions { get; set; }
         public int CompletedSessions { get; set; }

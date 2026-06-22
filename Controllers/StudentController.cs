@@ -98,6 +98,8 @@ namespace grad.Controllers
                 {
                     CourseId = e.CourseId,
                     Title = e.Course.Title,
+                    Introduction = e.Course.Introduction,
+                    PictureUrl = e.Course.PictureUrl,
                     TeacherName = e.Course.Teacher?.User != null
                         ? $"{e.Course.Teacher.User.firstname} {e.Course.Teacher.User.lastname}".Trim()
                         : "N/A",

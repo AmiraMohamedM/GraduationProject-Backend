@@ -5,6 +5,8 @@ namespace grad.DTOs
     {
         public int CourseId { get; set; }
         public string Title { get; set; } = string.Empty;
+        public string? Introduction { get; set; }
+        public string? PictureUrl { get; set; }
         public string AcademicLevel { get; set; } = string.Empty;
         public int AcademicYear { get; set; }
         public string TeacherName { get; set; } = string.Empty;
@@ -19,6 +21,8 @@ namespace grad.DTOs
     {
         public int CourseId { get; set; }
         public string CourseTitle { get; set; } = string.Empty;
+        public string? Introduction { get; set; }
+        public string? PictureUrl { get; set; }
         public string AcademicLevel { get; set; } = string.Empty;
         public int AcademicYear { get; set; }
         public string TeacherName { get; set; } = string.Empty;

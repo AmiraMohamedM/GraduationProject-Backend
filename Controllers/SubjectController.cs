@@ -90,18 +90,20 @@ namespace grad.Controllers
 
                 return new SubjectListItemDto
                 {
-                    CourseId          = e.CourseId,
-                    Title             = e.Course.Title,
-                    AcademicLevel     = e.Course.AcademicLevel,
-                    AcademicYear      = e.Course.AcademicYear,
-                    TeacherName       = teacher?.User != null
-                                            ? $"{teacher.User.firstname} {teacher.User.lastname}".Trim()
-                                            : "N/A",
-                    TeacherSubject    = teacher?.subject ?? string.Empty,
-                    ProgressPercent   = progressPercent,
-                    TotalSessions     = totalSessions,
+                    CourseId = e.CourseId,
+                    Title = e.Course.Title,
+                    Introduction = e.Course.Introduction,
+                    PictureUrl = e.Course.PictureUrl,
+                    AcademicLevel = e.Course.AcademicLevel,
+                    AcademicYear = e.Course.AcademicYear,
+                    TeacherName = teacher?.User != null
+                             ? $"{teacher.User.firstname} {teacher.User.lastname}".Trim()
+                             : "N/A",
+                    TeacherSubject = teacher?.subject ?? string.Empty,
+                    ProgressPercent = progressPercent,
+                    TotalSessions = totalSessions,
                     CompletedSessions = completedSessions,
-                    EnrolledAt        = e.EnrolledAt
+                    EnrolledAt = e.EnrolledAt
                 };
             }).ToList();
 
@@ -244,18 +246,20 @@ namespace grad.Controllers
             var teacher = course.Teacher;
             var response = new CourseSessionsResponseDto
             {
-                CourseId          = course.Id,
-                CourseTitle       = course.Title,
-                AcademicLevel     = course.AcademicLevel,
-                AcademicYear      = course.AcademicYear,
-                TeacherName       = teacher?.User != null
-                                        ? $"{teacher.User.firstname} {teacher.User.lastname}".Trim()
-                                        : "N/A",
-                TeacherSubject    = teacher?.subject ?? string.Empty,
-                ProgressPercent   = courseProgress,
-                TotalSessions     = totalSessions,
+                CourseId = course.Id,
+                CourseTitle = course.Title,
+                Introduction = course.Introduction,
+                PictureUrl = course.PictureUrl,
+                AcademicLevel = course.AcademicLevel,
+                AcademicYear = course.AcademicYear,
+                TeacherName = teacher?.User != null
+                             ? $"{teacher.User.firstname} {teacher.User.lastname}".Trim()
+                             : "N/A",
+                TeacherSubject = teacher?.subject ?? string.Empty,
+                ProgressPercent = courseProgress,
+                TotalSessions = totalSessions,
                 CompletedSessions = completedSessions,
-                Sessions          = sessionDtos
+                Sessions = sessionDtos
             };
 
             return Ok(response);
