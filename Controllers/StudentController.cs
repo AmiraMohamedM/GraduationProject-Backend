@@ -388,9 +388,14 @@ namespace grad.Controllers
 
             var userId = GetCurrentUserId();
 
-            var receiver = await _userManager.FindByIdAsync(receiverId.ToString());
-            if (receiver == null)
-                return NotFound(new { message = "Recipient not found." });
+            var student = await GetCurrentStudentAsync();
+            if (student == null)
+                return NotFound(new { message = "Student profile not found." });
+
+            var isMyModerator = await _db.Enrollments.AnyAsync(e =>
+                e.StudentId == student.student_id &&
+             e.Course.Teacher.Moderator.Id == receiverId); 
+            if (!isMyModerator) return Forbid();
 
             var message = new Message
             {
