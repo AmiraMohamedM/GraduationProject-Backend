@@ -334,8 +334,8 @@ public class AdminController : ControllerBase
         };
 
         _db.Moderators.Add(moderator);
-        await _db.SaveChangesAsync();
 
+        
         if (req.assigned_teacher_ids != null)
         {
             foreach (var tid in req.assigned_teacher_ids)
@@ -345,19 +345,18 @@ public class AdminController : ControllerBase
                     moderator_id = moderator.moderator_id,
                     teacher_user_id = tid
                 });
+
                 var teacher = await _db.Teachers.FirstOrDefaultAsync(t => t.user_id == tid);
                 if (teacher != null)
                 {
                     teacher.ModeratorId = user.Id;
                 }
             }
-
-            await _db.SaveChangesAsync();
         }
 
-        await _logger.Log(adminId,
-            $"Moderator {req.firstname} {req.lastname} created"
-        );
+        await _db.SaveChangesAsync();
+
+        await _logger.Log(adminId, $"Moderator {req.firstname} {req.lastname} created");
 
         return Ok(new { message = "Moderator created successfully.", id = user.Id });
     }
