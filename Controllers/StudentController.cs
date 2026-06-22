@@ -237,6 +237,8 @@ namespace grad.Controllers
                 Phone = user.PhoneNumber,
                 LanguagePref = user.language_pref,
                 ImageUrl = user.ProfileImageUrl,
+                AvatarInitials = (user.firstname?.Substring(0, 1).ToUpper() ?? "") +
+                     (user.lastname?.Substring(0, 1).ToUpper() ?? ""),
                 AcademicLevel = student.AcademicLevel,
                 ClassLevel = student.AcademicYear.ToString(),
 
