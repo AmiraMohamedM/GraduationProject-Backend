@@ -7,7 +7,7 @@ namespace grad.DTOs
         public Guid StudentId { get; set; }
         public string FullName { get; set; } = string.Empty;
         public string? AvatarInitials { get; set; }
-
+        public string? ProfileImage { get; set; }
         public string LastMessage { get; set; } = string.Empty;
 
         public DateTime LastMessageAt { get; set; }
