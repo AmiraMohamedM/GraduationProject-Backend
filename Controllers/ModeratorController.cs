@@ -807,10 +807,9 @@ namespace grad.Controllers
             return Ok(teachers);
         }
         private async Task<bool> IsMyStudent(Guid studentId, Guid moderatorId) =>
-         await _db.Enrollments.AnyAsync(e =>
-             e.StudentId == studentId &&
-             e.Course.Teacher.ModeratorId == moderatorId);
-
+            await _db.StudentTeachers.AnyAsync(st =>
+                st.StudentId == studentId &&
+                st.Teacher.ModeratorId == moderatorId);
     }
 
 

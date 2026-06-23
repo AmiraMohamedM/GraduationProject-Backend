@@ -85,11 +85,9 @@ namespace grad.Controllers
         {
             var moderatorUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            var isMyStudent = await _db.Students.AnyAsync(s =>
-                s.user_id == studentId &&
-                _db.Enrollments.Any(e =>
-                    e.StudentId == s.student_id &&
-                    e.Course.Teacher.ModeratorId == moderatorUserId));
+            var isMyStudent = await _db.StudentTeachers.AnyAsync(st =>
+                st.Student.user_id == studentId &&
+                st.Teacher.ModeratorId == moderatorUserId);
 
             if (!isMyStudent) return Forbid();
 
@@ -124,20 +122,16 @@ namespace grad.Controllers
         }
 
         [HttpPost("{studentId:guid}")]
-        public async Task<IActionResult> SendMessage(
-            Guid studentId,
-            [FromBody] SendMessageDto dto)
+        public async Task<IActionResult> SendMessage(Guid studentId, [FromBody] SendMessageDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Content))
                 return BadRequest(new { message = "Message content cannot be empty." });
 
             var moderatorUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            var isMyStudent = await _db.Students.AnyAsync(s =>
-                s.user_id == studentId &&
-                _db.Enrollments.Any(e =>
-                    e.StudentId == s.student_id &&
-                    e.Course.Teacher.ModeratorId == moderatorUserId));
+            var isMyStudent = await _db.StudentTeachers.AnyAsync(st =>
+                st.Student.user_id == studentId &&
+                st.Teacher.ModeratorId == moderatorUserId);
 
             if (!isMyStudent) return Forbid();
 

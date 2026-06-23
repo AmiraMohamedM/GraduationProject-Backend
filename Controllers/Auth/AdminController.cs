@@ -414,18 +414,22 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> DeleteModerator(Guid id)
     {
         var adminId = GetAdminId();
-
         var moderator = await _db.Moderators
             .Include(m => m.User)
             .Include(m => m.AssignedTeachers)
             .FirstOrDefaultAsync(m => m.user_id == id && m.admin_id == adminId);
-
         if (moderator == null) return NotFound("Moderator not found.");
 
         var fullName = $"{moderator.User?.firstname} {moderator.User?.lastname}";
 
-        _db.ModeratorTeachers.RemoveRange(moderator.AssignedTeachers);
+        // Clear the direct FK on teachers.ModeratorId -> Users.Id
+        var teachersToUnassign = await _db.Teachers
+            .Where(t => t.ModeratorId == id)
+            .ToListAsync();
+        foreach (var t in teachersToUnassign)
+            t.ModeratorId = null;
 
+        _db.ModeratorTeachers.RemoveRange(moderator.AssignedTeachers);
         _db.Moderators.Remove(moderator);
         await _db.SaveChangesAsync();
 
@@ -433,7 +437,6 @@ public class AdminController : ControllerBase
             await _userManager.DeleteAsync(moderator.User);
 
         await _logger.Log(adminId, $"Moderator {fullName} deleted");
-
         return Ok(new { message = "Moderator deleted successfully." });
     }
 
