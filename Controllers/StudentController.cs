@@ -309,6 +309,55 @@ namespace grad.Controllers
                 imageUrl = (string?)null
             });
         }
+        [HttpPut("Update-profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateStudentProfileDto dto)
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+
+            var student = await _db.Students
+                .FirstOrDefaultAsync(s => s.user_id == userId);
+
+            if (student == null || user == null)
+                return NotFound(new { message = "Profile not found." });
+
+            if (!string.IsNullOrWhiteSpace(dto.FirstName))
+                user.firstname = dto.FirstName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.LastName))
+                user.lastname = dto.LastName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.Phone))
+                user.PhoneNumber = dto.Phone.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.LanguagePref))
+                user.language_pref = dto.LanguagePref.Trim();
+
+            var userUpdateResult = await _userManager.UpdateAsync(user);
+            if (!userUpdateResult.Succeeded)
+                return BadRequest(new { errors = userUpdateResult.Errors.Select(e => e.Description) });
+
+            if (!string.IsNullOrWhiteSpace(dto.ParentPhoneNumber))
+                student.ParentPhoneNumber = dto.ParentPhoneNumber.Trim();
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new StudentProfileDto
+            {
+                UserId = user.Id,
+                FirstName = user.firstname,
+                LastName = user.lastname,
+                Email = user.Email ?? string.Empty,
+                Phone = user.PhoneNumber,
+                LanguagePref = user.language_pref,
+                ImageUrl = user.ProfileImageUrl,
+                AvatarInitials = (user.firstname?.Substring(0, 1).ToUpper() ?? "") +
+                     (user.lastname?.Substring(0, 1).ToUpper() ?? ""),
+                AcademicLevel = student.AcademicLevel,
+                ClassLevel = student.AcademicYear.ToString(),
+                ParentPhoneNumber = student.ParentPhoneNumber
+            });
+        }
 
 
 

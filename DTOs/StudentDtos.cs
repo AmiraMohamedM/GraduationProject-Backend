@@ -88,9 +88,11 @@ namespace grad.DTOs
         public string? LastName { get; set; }
         public string? Phone { get; set; }
         public string? LanguagePref { get; set; }
+        public string? ParentPhoneNumber { get; set; }
+
     }
 
- 
+
 
     public class QuizDetailsDto
     {
