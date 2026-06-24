@@ -519,7 +519,6 @@ namespace grad.Controllers
             return Ok(new { message = "Password reset successfully." });
         }
 
-        // ENROLL STUDENT IN COURSE
         [HttpPost("students/{studentId:guid}/enroll")]
         public async Task<IActionResult> EnrollStudent(Guid studentId, [FromBody] EnrollStudentDto dto)
         {
@@ -531,6 +530,12 @@ namespace grad.Controllers
 
             var course = await _db.Courses.FindAsync(dto.CourseId);
             if (course is null) return NotFound(new { message = "Course not found." });
+
+            var isMyCourse = await _db.Courses.AnyAsync(c =>
+                c.Id == dto.CourseId &&
+                c.Teacher.ModeratorId == moderatorId);
+
+            if (!isMyCourse) return Forbid();
 
             var existing = await _db.Enrollments.FirstOrDefaultAsync(
                 e => e.StudentId == studentId && e.CourseId == dto.CourseId);
