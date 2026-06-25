@@ -377,26 +377,43 @@ public class AdminController : ControllerBase
         if (!string.IsNullOrEmpty(req.lastname)) moderator.User.lastname = req.lastname;
 
         await _userManager.UpdateAsync(moderator.User);
-
         if (req.assigned_teacher_ids != null)
         {
-            _db.ModeratorTeachers.RemoveRange(moderator.AssignedTeachers);
+            var currentTeacherIds = moderator.AssignedTeachers
+                .Select(x => x.teacher_user_id)
+                .OrderBy(x => x)
+                .ToList();
 
-            var oldTeachers = await _db.Teachers.Where(t => t.ModeratorId == moderator.User.Id).ToListAsync();
-            foreach (var ot in oldTeachers) { ot.ModeratorId = null; }
+            var newTeacherIds = req.assigned_teacher_ids
+                .OrderBy(x => x)
+                .ToList();
 
-            foreach (var tid in req.assigned_teacher_ids)
+            bool changed = !currentTeacherIds.SequenceEqual(newTeacherIds);
+
+            if (changed)
             {
-                _db.ModeratorTeachers.Add(new ModeratorTeacher
-                {
-                    moderator_id = moderator.moderator_id,
-                    teacher_user_id = tid
-                });
+                _db.ModeratorTeachers.RemoveRange(moderator.AssignedTeachers);
 
-                var teacher = await _db.Teachers.FirstOrDefaultAsync(t => t.user_id == tid);
-                if (teacher != null)
+                var oldTeachers = await _db.Teachers
+                    .Where(t => t.ModeratorId == moderator.User.Id)
+                    .ToListAsync();
+
+                foreach (var ot in oldTeachers)
+                    ot.ModeratorId = null;
+
+                foreach (var tid in req.assigned_teacher_ids)
                 {
-                    teacher.ModeratorId = moderator.User.Id;
+                    _db.ModeratorTeachers.Add(new ModeratorTeacher
+                    {
+                        moderator_id = moderator.moderator_id,
+                        teacher_user_id = tid
+                    });
+
+                    var teacher = await _db.Teachers
+                        .FirstOrDefaultAsync(t => t.user_id == tid);
+
+                    if (teacher != null)
+                        teacher.ModeratorId = moderator.User.Id;
                 }
             }
         }
