@@ -101,14 +101,15 @@ namespace grad.Controllers
                         .Select(c => c.Title)
                         .Distinct()
                         .ToList(),
-                    Initials = t.User.firstname.Substring(0, 1).ToUpper() + t.User.lastname.Substring(0, 1).ToUpper()
+                    Initials = t.User.firstname.Substring(0, 1).ToUpper() + t.User.lastname.Substring(0, 1).ToUpper(),
+                    StudentCount = _db.Enrollments.Count(e => e.Course.TeacherId == t.teacher_id)  
                 })
                 .ToListAsync();
 
             var teachersDistribution = assignedTeachers.Select(t => new
             {
                 TeacherName = t.FullName,
-                StudentCount = _db.Enrollments.Count(e => e.Course.TeacherId == t.teacher_id)
+                StudentCount = t.StudentCount  
             }).ToList();
 
             var firstDayOfMonth = DateTime.SpecifyKind(
