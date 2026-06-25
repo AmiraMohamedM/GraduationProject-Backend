@@ -150,18 +150,20 @@ public class AdminController : ControllerBase
                 lastname = t.User.lastname,
                 email = t.User.Email,
                 subject = t.subject,
-
-
                 courseCount = _db.Courses.Count(c => c.TeacherId == t.teacher_id),
-
-
                 studentsCount = _db.StudentTeachers
                     .Where(st => st.TeacherId == t.teacher_id)
                     .Select(st => st.StudentId)
                     .Distinct()
                     .Count(),
 
-
+                moderatorId = t.ModeratorId,
+                moderatorName = t.ModeratorId.HasValue
+                    ? _db.Users
+                        .Where(u => u.Id == t.ModeratorId)
+                        .Select(u => u.firstname + " " + u.lastname)
+                        .FirstOrDefault()
+                    : null
             })
             .ToListAsync();
 
