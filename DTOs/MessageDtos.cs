@@ -21,7 +21,7 @@ namespace grad.DTOs
         public int Id { get; set; }
         public Guid SenderId { get; set; }
         public string SenderName { get; set; } = string.Empty;
-
+        public string SenderAvatarInitials { get; set; }
         public bool IsFromModerator { get; set; }
 
         public string Content { get; set; } = string.Empty;

@@ -99,24 +99,26 @@ namespace grad.Controllers
                 .ExecuteUpdateAsync(setters =>
                     setters.SetProperty(m => m.IsRead, true));
 
-            var thread = await _db.Messages
+            var rawMessages = await _db.Messages
                 .Include(m => m.Sender)
                 .Where(m =>
                     (m.SenderId == moderatorUserId && m.ReceiverId == studentId) ||
                     (m.SenderId == studentId && m.ReceiverId == moderatorUserId))
                 .OrderBy(m => m.SentAt)
-                .Select(m => new ChatMessageDto
-                {
-                    Id = m.Id,
-                    SenderId = m.SenderId,
-                    SenderName = m.Sender.FullName,
-                    IsFromModerator = m.SenderId == moderatorUserId,
-                    Content = m.Content,
-                    SentAt = DateTime.SpecifyKind(m.SentAt, DateTimeKind.Utc),
-                    TimeAgo = BuildTimeAgo(m.SentAt),
-                    IsRead = m.IsRead
-                })
                 .ToListAsync();
+
+            var thread = rawMessages.Select(m => new ChatMessageDto
+            {
+                Id = m.Id,
+                SenderId = m.SenderId,
+                SenderName = m.Sender.FullName,
+                SenderAvatarInitials = BuildInitials(m.Sender.firstname, m.Sender.lastname),
+                IsFromModerator = m.SenderId == moderatorUserId,
+                Content = m.Content,
+                SentAt = DateTime.SpecifyKind(m.SentAt, DateTimeKind.Utc),
+                TimeAgo = BuildTimeAgo(m.SentAt),
+                IsRead = m.IsRead
+            }).ToList();
 
             return Ok(thread);
         }
@@ -135,6 +137,11 @@ namespace grad.Controllers
 
             if (!isMyStudent) return Forbid();
 
+            var moderatorUser = await _db.Users
+                .Where(u => u.Id == moderatorUserId)
+                .Select(u => new { u.firstname, u.lastname, u.FullName })
+                .FirstOrDefaultAsync();
+
             var message = new Message
             {
                 SenderId = moderatorUserId,
@@ -151,7 +158,8 @@ namespace grad.Controllers
             {
                 Id = message.Id,
                 SenderId = message.SenderId,
-                SenderName = User.FindFirstValue(ClaimTypes.Name) ?? "Moderator",
+                SenderName = moderatorUser?.FullName ?? "Moderator",
+                SenderAvatarInitials = BuildInitials(moderatorUser?.firstname ?? "", moderatorUser?.lastname ?? ""),
                 IsFromModerator = true,
                 Content = message.Content,
                 SentAt = message.SentAt,
