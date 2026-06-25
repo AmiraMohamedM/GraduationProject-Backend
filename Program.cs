@@ -96,7 +96,7 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Main API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Learning Platform API", Version = "v1" });
     c.SwaggerDoc("students", new OpenApiInfo { Title = "Student API", Version = "v1" });
     c.SwaggerDoc("teachers", new OpenApiInfo { Title = "Teacher API", Version = "v1" });
     c.SwaggerDoc("admin", new OpenApiInfo { Title = "Admin API", Version = "v1" });
@@ -146,7 +146,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Main API");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Learning Platform API");
         c.SwaggerEndpoint("/swagger/students/swagger.json", "Students");
         c.SwaggerEndpoint("/swagger/teachers/swagger.json", "Teachers");
         c.SwaggerEndpoint("/swagger/admin/swagger.json", "Admin");
