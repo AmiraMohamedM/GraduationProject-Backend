@@ -590,6 +590,64 @@ namespace grad.Controllers
                 }) ?? Enumerable.Empty<QuizQuestionDto>()
             });
         }
+        [HttpGet("courses/{courseId:int}/quizzes")]
+        public async Task<IActionResult> GetCourseQuizzes(int courseId)
+        {
+            var student = await GetCurrentStudentAsync();
+            if (student == null)
+                return NotFound(new { message = "Student profile not found." });
+
+            var enrolled = await _db.Enrollments
+                .AnyAsync(e => e.StudentId == student.student_id && e.CourseId == courseId);
+
+            if (!enrolled) return Forbid();
+
+            var sessions = await _db.CourseSessions
+                .AsNoTracking()
+                .Include(cs => cs.EntryTest)
+                .Where(cs => cs.CourseId == courseId && cs.HasEntryTest && cs.EntryTest != null)
+                .OrderBy(cs => cs.Id)
+                .ToListAsync();
+
+            var sessionIds = sessions.Select(s => s.Id).ToList();
+
+            var lastAttempts = await _db.LessonAttempts
+                .AsNoTracking()
+                .Where(la => la.StudentId == student.student_id && sessionIds.Contains(la.CourseSessionId))
+                .ToListAsync();
+
+            var result = sessions.Select((s, index) =>
+            {
+                var quiz = s.EntryTest!;
+
+                var attempt = lastAttempts
+                    .Where(la => la.CourseSessionId == s.Id)
+                    .OrderByDescending(la => la.TakenAt)
+                    .FirstOrDefault();
+
+                bool alreadyPassed = attempt?.Passed ?? false;
+
+                DateTime? canRetakeAt = null;
+                if (attempt != null && !alreadyPassed && quiz.RetakeIntervalHours > 0)
+                {
+                    var retakeTime = attempt.TakenAt.AddHours(quiz.RetakeIntervalHours);
+                    if (retakeTime > DateTime.UtcNow)
+                        canRetakeAt = retakeTime;
+                }
+
+                return new CourseQuizSummaryDto
+                {
+                    QuizNumber = index + 1,
+                    SessionId = s.Id,
+                    QuizId = quiz.Id,
+                    Title = quiz.Title,
+                    AlreadyPassed = alreadyPassed,
+                    CanRetakeAt = canRetakeAt
+                };
+            }).ToList();
+
+            return Ok(result);
+        }
 
         [HttpPost("quiz/{sessionId:int}/submit")]
         public async Task<IActionResult> SubmitQuiz(
