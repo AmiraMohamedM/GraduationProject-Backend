@@ -1,4 +1,4 @@
-using grad.Data;
+﻿using grad.Data;
 using grad.DTOs;
 using grad.Interfaces;
 using grad.Models;
@@ -12,7 +12,6 @@ using System.Text.Json;
 
 namespace grad.Controllers
 {
-
     [ApiController]
     [Route("api/student")]
     [Authorize(Roles = "Student")]
@@ -35,7 +34,10 @@ namespace grad.Controllers
             _photoService = photoService;
         }
 
-      
+        // ─────────────────────────────────────────────────────────────
+        // PRIVATE HELPERS
+        // ─────────────────────────────────────────────────────────────
+
         private async Task<Student?> GetCurrentStudentAsync()
         {
             var rawId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -53,10 +55,67 @@ namespace grad.Controllers
             return Guid.Parse(rawId);
         }
 
+        /// <summary>
+        /// Returns true if the session at <paramref name="indexInCourse"/> is locked
+        /// for the given student.
+        ///
+        /// Rules:
+        ///  - Index 0 is always unlocked.
+        ///  - Any other session requires the previous session to be watched to 100%.
+        ///  - If the previous session has an entry test, the student must have passed it.
+        /// </summary>
+        private async Task<bool> IsSessionLockedAsync(
+            Guid studentId,
+            CourseSession session,
+            int indexInCourse)
+        {
+            // First session is always unlocked
+            if (indexInCourse == 0) return false;
+
+            // Load all sessions in this course ordered consistently
+            var allSessions = await _db.CourseSessions
+                .AsNoTracking()
+                .Where(cs => cs.CourseId == session.CourseId)
+                .OrderBy(cs => cs.Id)
+                .ToListAsync();
+
+            var previousSession = allSessions.ElementAtOrDefault(indexInCourse - 1);
+            if (previousSession == null) return false;
+
+            // Previous session must be watched to 100%
+            var prevProgress = await _db.LessonProgress
+                .AsNoTracking()
+                .FirstOrDefaultAsync(lp =>
+                    lp.StudentId == studentId &&
+                    lp.CourseSessionId == previousSession.Id);
+
+            if (prevProgress == null || prevProgress.ProgressPercent < 100)
+                return true;
+
+            // If previous session has an entry test the student must have passed it
+            if (previousSession.HasEntryTest)
+            {
+                var passed = await _db.LessonAttempts
+                    .AsNoTracking()
+                    .AnyAsync(la =>
+                        la.StudentId == studentId &&
+                        la.CourseSessionId == previousSession.Id &&
+                        la.Passed);
+
+                if (!passed) return true;
+            }
+
+            return false;
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // HOME / STATISTICS / ACHIEVEMENT
+        // ─────────────────────────────────────────────────────────────
+
         [HttpGet("home")]
         public async Task<IActionResult> GetHome()
         {
-            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!); 
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var user = await _userManager.FindByIdAsync(userId.ToString());
 
             var student = await _db.Students
@@ -119,7 +178,7 @@ namespace grad.Controllers
             return Ok(new StudentHomeResponseDto
             {
                 StudentName = $"{user!.firstname} {user.lastname}".Trim(),
-                AcademicLevel = student.AcademicLevel ?? string.Empty, 
+                AcademicLevel = student.AcademicLevel ?? string.Empty,
                 UnreadNotifications = unread,
                 Statistics = new StudentDashboardStatsDto
                 {
@@ -132,18 +191,16 @@ namespace grad.Controllers
             });
         }
 
-       
         [HttpGet("statistics")]
-            public async Task<IActionResult> GetStatistics()
-            {
-                var student = await GetCurrentStudentAsync();
-                if (student == null)
-                    return NotFound(new { message = "Student profile not found." });
+        public async Task<IActionResult> GetStatistics()
+        {
+            var student = await GetCurrentStudentAsync();
+            if (student == null)
+                return NotFound(new { message = "Student profile not found." });
 
-                var stats = await _statisticsService.GetStudentStatisticsAsync(student.student_id);
-                return Ok(stats);
-            } 
-
+            var stats = await _statisticsService.GetStudentStatisticsAsync(student.student_id);
+            return Ok(stats);
+        }
 
         [HttpGet("achievement")]
         public async Task<IActionResult> GetAchievement()
@@ -215,7 +272,9 @@ namespace grad.Controllers
             });
         }
 
-
+        // ─────────────────────────────────────────────────────────────
+        // PROFILE
+        // ─────────────────────────────────────────────────────────────
 
         [HttpGet("profile")]
         public async Task<IActionResult> GetProfile()
@@ -243,16 +302,15 @@ namespace grad.Controllers
                      (user.lastname?.Substring(0, 1).ToUpper() ?? ""),
                 AcademicLevel = student.AcademicLevel,
                 ClassLevel = student.AcademicYear.ToString(),
-
                 ParentPhoneNumber = student.ParentPhoneNumber
             });
         }
+
         [HttpPost("profile/photo")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> AddPhoto([FromForm] AddPhotoDto dto)
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
             var user = await _userManager.FindByIdAsync(userId.ToString());
 
             if (user == null)
@@ -276,24 +334,18 @@ namespace grad.Controllers
 
             return Ok(new { imageUrl = user.ProfileImageUrl });
         }
+
         [HttpDelete("profile/deletephoto")]
         public async Task<IActionResult> DeletePhoto()
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
             var user = await _userManager.FindByIdAsync(userId.ToString());
 
             if (user == null)
-                return NotFound(new
-                {
-                    message = "User not found"
-                });
+                return NotFound(new { message = "User not found" });
 
             if (string.IsNullOrEmpty(user.ProfileImagePublicId))
-                return BadRequest(new
-                {
-                    message = "No photo to delete"
-                });
+                return BadRequest(new { message = "No photo to delete" });
 
             await _photoService.DeletePhotoAsync(user.ProfileImagePublicId);
 
@@ -309,6 +361,7 @@ namespace grad.Controllers
                 imageUrl = (string?)null
             });
         }
+
         [HttpPut("Update-profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateStudentProfileDto dto)
         {
@@ -359,7 +412,9 @@ namespace grad.Controllers
             });
         }
 
-
+        // ─────────────────────────────────────────────────────────────
+        // MESSAGES
+        // ─────────────────────────────────────────────────────────────
 
         [HttpGet("messages")]
         public async Task<IActionResult> GetConversations()
@@ -445,7 +500,8 @@ namespace grad.Controllers
 
             var isMyModerator = await _db.Enrollments.AnyAsync(e =>
                 e.StudentId == student.student_id &&
-             e.Course.Teacher.Moderator.Id == receiverId); 
+                e.Course.Teacher.Moderator.Id == receiverId);
+
             if (!isMyModerator) return Forbid();
 
             var message = new Message
@@ -460,7 +516,86 @@ namespace grad.Controllers
 
             return Ok(new { message.Id, message.SentAt });
         }
+        // ─────────────────────────────────────────────────────────────
+        // LESSON VIEW & PROGRESS
+        // ─────────────────────────────────────────────────────────────
 
+        // Call ONCE when the student opens/starts the lesson player.
+        // This is the only place Views gets incremented.
+        [HttpPost("lesson/{sessionId:int}/view")]
+        public async Task<IActionResult> RecordView(int sessionId)
+        {
+            var student = await GetCurrentStudentAsync();
+            if (student == null)
+                return NotFound(new { message = "Student profile not found." });
+
+            var studentId = student.student_id;
+
+            var session = await _db.CourseSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cs => cs.Id == sessionId);
+
+            if (session == null)
+                return NotFound(new { message = "Session not found." });
+
+            var enrolled = await _db.Enrollments
+                .AnyAsync(e => e.StudentId == studentId && e.CourseId == session.CourseId);
+
+            if (!enrolled) return Forbid();
+
+            // ── Lock check ───────────────────────────────────────────
+            var allSessions = await _db.CourseSessions
+                .AsNoTracking()
+                .Where(cs => cs.CourseId == session.CourseId)
+                .OrderBy(cs => cs.Id)
+                .ToListAsync();
+
+            int index = allSessions.FindIndex(cs => cs.Id == sessionId);
+            bool isLocked = await IsSessionLockedAsync(studentId, session, index);
+
+            if (isLocked)
+                return StatusCode(423, new { message = "This session is locked. Complete the previous session and pass its test first." });
+            // ────────────────────────────────────────────────────────
+
+            var existing = await _db.LessonProgress
+                .FirstOrDefaultAsync(lp =>
+                    lp.StudentId == studentId && lp.CourseSessionId == sessionId);
+
+            if (existing == null)
+            {
+                existing = new LessonProgress
+                {
+                    StudentId = studentId,
+                    CourseSessionId = sessionId,
+                    Views = 1,
+                    MaxViews = session.MaxViews, // ← copy from session on first create
+                    ProgressPercent = 0,
+                    LastWatched = DateTime.UtcNow
+                };
+                _db.LessonProgress.Add(existing);
+            }
+            else
+            {
+                // use student-specific MaxViews; fall back to session default if not set
+                int effectiveMaxViews = existing.MaxViews > 0 ? existing.MaxViews : session.MaxViews;
+
+                if (existing.Views >= effectiveMaxViews)
+                    return BadRequest(new { message = "Max views reached for this lesson." });
+
+                existing.Views += 1;
+                existing.LastWatched = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync();
+
+            // return the student-specific ceiling, not the global session default
+            int currentMax = existing.MaxViews > 0 ? existing.MaxViews : session.MaxViews;
+            return Ok(new { views = existing.Views, maxViews = currentMax });
+        }
+
+
+        // Call repeatedly while the video plays (e.g. every 10-15s) and on pause/exit.
+        // Never touches Views — only tracks the furthest position reached.
         [HttpPost("lesson/{sessionId:int}/progress")]
         public async Task<IActionResult> UpdateLessonProgress(
             int sessionId,
@@ -492,30 +627,160 @@ namespace grad.Controllers
 
             if (existing == null)
             {
-                _db.LessonProgress.Add(new LessonProgress
+                existing = new LessonProgress
                 {
                     StudentId = studentId,
                     CourseSessionId = sessionId,
-                    Views = 1,
-                    MaxViews = session.MaxViews,
+                    Views = 0,
                     ProgressPercent = progress,
                     LastWatched = DateTime.UtcNow
-                });
+                };
+                _db.LessonProgress.Add(existing);
             }
             else
             {
-                if (progress < existing.ProgressPercent && existing.ProgressPercent > 0)
-                    existing.Views = Math.Min(existing.Views + 1, session.MaxViews);
-
                 existing.ProgressPercent = Math.Max(existing.ProgressPercent, progress);
                 existing.LastWatched = DateTime.UtcNow;
             }
 
             await _db.SaveChangesAsync();
 
-            return Ok(new { message = "Progress updated.", ProgressPercent = progress });
+            return Ok(new { message = "Progress updated.", ProgressPercent = existing.ProgressPercent });
         }
 
+        // ─────────────────────────────────────────────────────────────
+        // COURSE SESSIONS (with lock state)  
+        // ─────────────────────────────────────────────────────────────
+
+
+        [HttpGet("course/{courseId:int}/sessions")]
+        public async Task<IActionResult> GetCourseSessions(int courseId)
+        {
+            var student = await GetCurrentStudentAsync();
+            if (student == null)
+                return NotFound(new { message = "Student profile not found." });
+
+            var enrolled = await _db.Enrollments
+                .AnyAsync(e =>
+                    e.StudentId == student.student_id &&
+                    e.CourseId == courseId);
+
+            if (!enrolled) return Forbid();
+
+            var sessions = await _db.CourseSessions
+                .AsNoTracking()
+                .Where(cs => cs.CourseId == courseId)
+                .OrderBy(cs => cs.Id)
+                .ToListAsync();
+
+            var sessionIds = sessions.Select(s => s.Id).ToList();
+
+            var progressMap = await _db.LessonProgress
+                .AsNoTracking()
+                .Where(lp =>
+                    lp.StudentId == student.student_id &&
+                    sessionIds.Contains(lp.CourseSessionId))
+                .ToDictionaryAsync(lp => lp.CourseSessionId);
+
+            var passedSessionIds = await _db.LessonAttempts
+                .AsNoTracking()
+                .Where(la =>
+                    la.StudentId == student.student_id &&
+                    sessionIds.Contains(la.CourseSessionId) &&
+                    la.Passed)
+                .Select(la => la.CourseSessionId)
+                .Distinct()
+                .ToListAsync();
+
+            var result = new List<object>();
+
+            for (int i = 0; i < sessions.Count; i++)
+            {
+                var s = sessions[i];
+                bool isLocked = await IsSessionLockedAsync(student.student_id, s, i);
+
+                progressMap.TryGetValue(s.Id, out var progress);
+
+                result.Add(new
+                {
+                    s.Id,
+                    s.Title,
+                    s.HasEntryTest,
+                    s.MaxViews,
+                    IsLocked = isLocked,
+                    ProgressPercent = progress?.ProgressPercent ?? 0,
+                    Views = progress?.Views ?? 0,
+                    TestPassed = passedSessionIds.Contains(s.Id)
+                });
+            }
+
+            return Ok(result);
+        }
+
+
+
+
+        // ─────────────────────────────────────────────────────────────
+        // LESSON DETAILS
+        // ─────────────────────────────────────────────────────────────
+
+        [HttpGet("lesson/{sessionId:int}/details")]
+        public async Task<IActionResult> GetLessonDetails(int sessionId)
+        {
+            var student = await GetCurrentStudentAsync();
+            if (student == null)
+                return NotFound(new { message = "Student profile not found." });
+
+            var session = await _db.CourseSessions
+                .AsNoTracking()
+                .Include(cs => cs.Files)
+                .FirstOrDefaultAsync(cs => cs.Id == sessionId);
+
+            if (session == null)
+                return NotFound(new { message = "Session not found." });
+
+            var enrolled = await _db.Enrollments
+                .AnyAsync(e => e.StudentId == student.student_id && e.CourseId == session.CourseId);
+
+            if (!enrolled) return Forbid();
+
+            // ── Lock check ───────────────────────────────────────────
+            var allSessions = await _db.CourseSessions
+                .AsNoTracking()
+                .Where(cs => cs.CourseId == session.CourseId)
+                .OrderBy(cs => cs.Id)
+                .ToListAsync();
+
+            int index = allSessions.FindIndex(cs => cs.Id == sessionId);
+            bool isLocked = await IsSessionLockedAsync(student.student_id, session, index);
+
+            if (isLocked)
+                return StatusCode(423, new { message = "This session is locked. Complete the previous session and pass its test first." });
+            // ────────────────────────────────────────────────────────
+
+            return Ok(new
+            {
+                session.Id,
+                session.Title,
+                session.MaxViews,
+                session.AvailableDays,
+                session.HomeworkFileUrl,
+                session.HomeworkFileName,
+                session.HasEntryTest,
+                Files = session.Files.Select(f => new
+                {
+                    f.Id,
+                    f.FileName,
+                    f.FileType,
+                    f.FileSize,
+                    f.FileUrl
+                })
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // QUIZ
+        // ─────────────────────────────────────────────────────────────
 
         [HttpGet("quiz/{sessionId:int}")]
         public async Task<IActionResult> GetQuiz(int sessionId)
@@ -541,6 +806,20 @@ namespace grad.Controllers
                 .AnyAsync(e => e.StudentId == student.student_id && e.CourseId == session.CourseId);
 
             if (!enrolled) return Forbid();
+
+            // ── Lock check ───────────────────────────────────────────
+            var allSessions = await _db.CourseSessions
+                .AsNoTracking()
+                .Where(cs => cs.CourseId == session.CourseId)
+                .OrderBy(cs => cs.Id)
+                .ToListAsync();
+
+            int index = allSessions.FindIndex(cs => cs.Id == sessionId);
+            bool isLocked = await IsSessionLockedAsync(student.student_id, session, index);
+
+            if (isLocked)
+                return StatusCode(423, new { message = "This session is locked. Complete the previous session and pass its test first." });
+            // ────────────────────────────────────────────────────────
 
             var quiz = session.EntryTest;
 
@@ -569,6 +848,7 @@ namespace grad.Controllers
                     : lastAttempt.Score;
             }
 
+            // Hide questions once the student has already passed
             return Ok(new QuizDetailsDto
             {
                 QuizId = quiz.Id,
@@ -578,18 +858,21 @@ namespace grad.Controllers
                 AlreadyPassed = alreadyPassed,
                 LastScore = lastScorePct,
                 CanRetakeAt = canRetakeAt,
-                Questions = quiz.Questions?.Select(q => new QuizQuestionDto
-                {
-                    QuestionId = q.Id,
-                    Text = q.Text,
-                    Options = q.Options.Select(o => new QuizOptionDto
+                Questions = alreadyPassed
+                    ? Enumerable.Empty<QuizQuestionDto>()
+                    : quiz.Questions?.Select(q => new QuizQuestionDto
                     {
-                        OptionId = o.Id,
-                        Text = o.Text
-                    })
-                }) ?? Enumerable.Empty<QuizQuestionDto>()
+                        QuestionId = q.Id,
+                        Text = q.Text,
+                        Options = q.Options.Select(o => new QuizOptionDto
+                        {
+                            OptionId = o.Id,
+                            Text = o.Text
+                        })
+                    }) ?? Enumerable.Empty<QuizQuestionDto>()
             });
         }
+
         [HttpGet("courses/{courseId:int}/quizzes")]
         public async Task<IActionResult> GetCourseQuizzes(int courseId)
         {
@@ -756,46 +1039,10 @@ namespace grad.Controllers
                 Breakdown = breakdown
             });
         }
-        [HttpGet("lesson/{sessionId:int}/details")]
-        public async Task<IActionResult> GetLessonDetails(int sessionId)
-        {
-            var student = await GetCurrentStudentAsync();
-            if (student == null)
-                return NotFound(new { message = "Student profile not found." });
 
-            var session = await _db.CourseSessions
-                .AsNoTracking()
-                .Include(cs => cs.Files)
-                .FirstOrDefaultAsync(cs => cs.Id == sessionId);
-
-            if (session == null)
-                return NotFound(new { message = "Session not found." });
-
-            var enrolled = await _db.Enrollments
-                .AnyAsync(e => e.StudentId == student.student_id && e.CourseId == session.CourseId);
-
-            if (!enrolled) return Forbid();
-
-            return Ok(new
-            {
-                session.Id,
-                session.Title,
-                session.MaxViews,
-                session.AvailableDays,
-                session.HomeworkFileUrl,
-                session.HomeworkFileName,
-                session.HasEntryTest,
-                Files = session.Files.Select(f => new
-                {
-                    f.Id,
-                    f.FileName,
-                    f.FileType,
-                    f.FileSize,
-                    f.FileUrl
-                })
-            });
-        }
-
+        // ─────────────────────────────────────────────────────────────
+        // HOMEWORK
+        // ─────────────────────────────────────────────────────────────
 
         [HttpPost("homework/{sessionId:int}/submit")]
         public async Task<IActionResult> SubmitHomework(
@@ -871,6 +1118,9 @@ namespace grad.Controllers
             });
         }
 
+        // ─────────────────────────────────────────────────────────────
+        // STUDENT REQUESTS
+        // ─────────────────────────────────────────────────────────────
 
         [HttpPost("request/views")]
         public async Task<IActionResult> RequestExtraViews([FromBody] StudentRequestDto dto)

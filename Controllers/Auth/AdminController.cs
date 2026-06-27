@@ -468,28 +468,49 @@ public class AdminController : ControllerBase
     {
         var adminId = GetAdminId();
 
-        var enrollmentBySubject = await _db.Courses
-            .Where(c => c.Teacher.admin_id == adminId)
-            .GroupBy(c => c.TeacherId)
-            .Select(g => new { subject = g.Key, students = g.Count() })
+        // Monthly new enrollments for the last 12 months
+        var twelveMonthsAgo = DateTime.UtcNow.AddMonths(-12);
+
+        var monthlyEnrollments = await _db.Enrollments
+            .Where(e =>
+                e.Course.Teacher.admin_id == adminId &&
+                e.EnrolledAt >= twelveMonthsAgo)
+            .GroupBy(e => new { e.EnrolledAt.Year, e.EnrolledAt.Month })
+            .Select(g => new
+            {
+                year = g.Key.Year,
+                month = g.Key.Month,
+                count = g.Count()
+            })
+            .OrderBy(x => x.year)
+            .ThenBy(x => x.month)
             .ToListAsync();
 
+        // Format month names for Flutter
+        var monthlyFormatted = monthlyEnrollments.Select(x => new
+        {
+            label = new DateTime(x.year, x.month, 1).ToString("MMM"),
+            count = x.count
+        }).ToList();
+
+        // Students per teacher (actual distinct students enrolled)
         var studentsPerTeacher = await _db.Teachers
             .Include(t => t.User)
             .Where(t => t.admin_id == adminId)
             .Select(t => new
             {
                 name = t.User.firstname + " " + t.User.lastname,
-                value = _db.Courses.Count(c => c.TeacherId == t.teacher_id)
+                value = _db.Enrollments
+                    .Where(e => e.Course.TeacherId == t.teacher_id)
+                    .Select(e => e.StudentId)
+                    .Distinct()
+                    .Count()
             })
             .Where(x => x.value > 0)
             .ToListAsync();
 
-
-
-        return Ok(new { enrollmentBySubject, studentsPerTeacher });
+        return Ok(new { monthlyEnrollments = monthlyFormatted, studentsPerTeacher });
     }
-
     // ================================================================
     // SETTINGS
     // ================================================================

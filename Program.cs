@@ -6,15 +6,40 @@ using grad.Models;
 using grad.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.Http.Features;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Services
 builder.Services.AddScoped<IPhotoService, PhotoService>();
-builder.Services.AddControllers();
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<ActivityInterceptor>();
+builder.Services.AddScoped<ActivityLogger>();
+
+builder.Services.AddHttpClient();
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddHostedService<NotificationBackgroundService>();
+
+builder.Services.Configure<CloudinarySettings>(
+    builder.Configuration.GetSection("CloudinarySettings"));
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 1024 * 1024 * 1024;
+});
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 1024 * 1024 * 1024;
+});
 
 builder.Services.AddCors(options =>
 {
@@ -25,30 +50,15 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader();
     });
 });
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.AddHostedService<grad.Services.NotificationBackgroundService>();
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddHttpClient();
-builder.Services.Configure<FormOptions>(options =>
-{
-    options.MultipartBodyLengthLimit = 1024 * 1024 * 1024;
-});
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.Limits.MaxRequestBodySize = 1024 * 1024 * 1024; 
-});
-builder.Services.AddScoped<IStudentService, StudentService>();
-builder.Services.AddScoped<IStatisticsService, StatisticsService>();
-builder.Services.Configure<CloudinarySettings>(
-    builder.Configuration.GetSection("CloudinarySettings"));
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ActivityInterceptor>();
-builder.Services.AddScoped<ActivityLogger>();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -56,6 +66,7 @@ builder.Services.AddControllers()
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
+// JWT
 var jwtSection = builder.Configuration.GetSection("JwtSettings");
 var secret = jwtSection["Secret"];
 var issuer = jwtSection["Issuer"];
@@ -96,27 +107,29 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Learning Platform API", Version = "v1" });
-    c.SwaggerDoc("students", new OpenApiInfo { Title = "Student API", Version = "v1" });
-    c.SwaggerDoc("teachers", new OpenApiInfo { Title = "Teacher API", Version = "v1" });
-    c.SwaggerDoc("admin", new OpenApiInfo { Title = "Admin API", Version = "v1" });
-    c.SwaggerDoc("moderator", new OpenApiInfo { Title = "Moderator API", Version = "v1" });
+c.SwaggerDoc("v1", new OpenApiInfo { Title = "Learning Platform API", Version = "v1" });
+c.SwaggerDoc("students", new OpenApiInfo { Title = "Student API", Version = "v1" });
+c.SwaggerDoc("teachers", new OpenApiInfo { Title = "Teacher API", Version = "v1" });
+c.SwaggerDoc("admin", new OpenApiInfo { Title = "Admin API", Version = "v1" });
+c.SwaggerDoc("moderator", new OpenApiInfo { Title = "Moderator API", Version = "v1" });
 
-    var scheme = new OpenApiSecurityScheme
+var scheme = new OpenApiSecurityScheme
+{
+    Name = "Authorization",
+    Description = "Enter: Bearer {token}",
+    In = ParameterLocation.Header,
+    Type = SecuritySchemeType.Http,
+    Scheme = "bearer",
+    BearerFormat = "JWT",
+    Reference = new OpenApiReference
     {
-        Name = "Authorization",
-        Description = "Enter: Bearer {token}",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        Reference = new OpenApiReference
-        {
-            Type = ReferenceType.SecurityScheme,
-            Id = JwtBearerDefaults.AuthenticationScheme
-        }
-    };
+        Type = ReferenceType.SecurityScheme,
+        Id = JwtBearerDefaults.AuthenticationScheme
+    }
+};
+
     c.AddSecurityDefinition(scheme.Reference.Id, scheme);
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         { scheme, Array.Empty<string>() }
@@ -125,22 +138,69 @@ builder.Services.AddSwaggerGen(c =>
     c.DocInclusionPredicate((doc, desc) =>
     {
         var path = desc.RelativePath?.ToLower() ?? "";
+
         if (doc == "students") return path.Contains("student");
         if (doc == "teachers") return path.Contains("teacher");
         if (doc == "admin") return path.Contains("admin");
         if (doc == "moderator") return path.Contains("moderator");
+
         return doc == "v1";
     });
 });
 
 var app = builder.Build();
 
+// Migration + Seeding
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        logger.LogInformation("Applying database migrations...");
+
+        var context = services.GetRequiredService<AppDbContext>();
+        context.Database.Migrate();
+
+        logger.LogInformation("Seeding roles and admin user...");
+
+        await SeedData.SeedRolesAsync(services);
+        await SeedData.SeedAdminAsync(services);
+
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+
+        string adminEmail = "m314227@gmail.com";
+        string adminPassword = "Admin@123";
+
+        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+        if (adminUser == null)
+        {
+            adminUser = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = adminEmail,
+                Email = adminEmail,
+                firstname = "Graduation",
+                lastname = "Project",
+                EmailConfirmed = true
+            };
+
+            await userManager.CreateAsync(adminUser, adminPassword);
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+
+            logger.LogInformation("Admin user created");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Startup error");
+        throw;
+    }
 }
 
+// Middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -156,85 +216,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();      
+app.UseStaticFiles(); // wwwroot
+
 
 app.UseRouting();
 
-app.UseCors("AllowAll");   
+app.UseCors("AllowAll");
 
-app.UseAuthentication();  
-app.UseAuthorization();    
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
-
-app.Run();
-
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-
-    try
-    {
-        logger.LogInformation("Applying database migrations...");
-
-        var context = services.GetRequiredService<AppDbContext>();
-
-        context.Database.Migrate();
-
-        logger.LogInformation("Database migrations applied successfully!");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "An error occurred while migrating the database.");
-        throw; 
-    }
-}
-
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-
-    try
-    {
-        logger.LogInformation(" Seeding roles and admin user...");
-
-        await SeedData.SeedRolesAsync(services);
-        await SeedData.SeedAdminAsync(services);
-
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        string adminEmail = "m314227@gmail.com";
-        string adminPassword = "Admin@123";
-
-        var adminUser = await userManager.FindByEmailAsync(adminEmail);
-        if (adminUser == null)
-        {
-            adminUser = new ApplicationUser
-            {
-                Id = Guid.NewGuid(),
-                UserName = adminEmail,
-                Email = adminEmail,
-                firstname = "Graduation",
-                lastname = "Project",
-                EmailConfirmed = true
-            };
-
-            await userManager.CreateAsync(adminUser, adminPassword);
-            await userManager.AddToRoleAsync(adminUser, "Admin");
-            logger.LogInformation("Admin user created: {Email}", adminEmail);
-        }
-        else
-        {
-            logger.LogInformation("Admin user already exists: {Email}", adminEmail);
-        }
-
-        logger.LogInformation("Database seeding completed successfully!");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "An error occurred while seeding the database.");
-    }
-}
 
 app.Run();

@@ -31,7 +31,7 @@ namespace grad.Controllers
         }
 
         // DASHBOARD
-       
+
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetDashboard()
         {
@@ -50,9 +50,7 @@ namespace grad.Controllers
             var courseIds = subjects.Select(c => c.Id).ToList();
 
             var totalStudents = await _db.Enrollments
-
                 .Where(e => courseIds.Contains(e.CourseId))
-
                 .Select(e => e.StudentId)
                 .Distinct()
                 .CountAsync();
@@ -91,7 +89,7 @@ namespace grad.Controllers
         }
 
         // GET ALL STUDENTS
-        
+
         [HttpGet("students")]
         public async Task<IActionResult> GetAllStudents()
         {
@@ -103,16 +101,17 @@ namespace grad.Controllers
                 .Select(c => c.Id)
                 .ToListAsync();
 
-
-
-
             var studentIds = await _db.Enrollments
                 .Where(e => courseIds.Contains(e.CourseId))
-
                 .Select(e => e.StudentId)
                 .Distinct()
                 .ToListAsync();
 
+            // Only this teacher's lessons should count towards progress/last-active
+            var teacherLessonIds = await _db.CourseSessions
+                .Where(cs => courseIds.Contains(cs.CourseId))
+                .Select(cs => cs.Id)
+                .ToListAsync();
 
             var students = await _db.Students
                 .Include(s => s.User)
@@ -120,11 +119,16 @@ namespace grad.Controllers
                 .ToListAsync();
 
             var progresses = await _db.LessonProgress
-                .Where(lp => studentIds.Contains(lp.StudentId))
+                .Where(lp => studentIds.Contains(lp.StudentId)
+                    && teacherLessonIds.Contains(lp.CourseSessionId))
                 .ToListAsync();
 
+            // Only quiz results tied to this teacher's lessons
             var quizResults = await _db.StudentQuizResults
-                .Where(q => studentIds.Contains(q.StudentId))
+                .Include(q => q.Quiz)
+                .Where(q => studentIds.Contains(q.StudentId)
+                    && q.Quiz != null
+                    && teacherLessonIds.Contains(q.Quiz.CourseSessionId))
                 .ToListAsync();
 
             var result = students.Select(s =>
@@ -189,18 +193,47 @@ namespace grad.Controllers
 
             return Ok(requests);
         }
-
         [HttpPost("request/{id}/approve")]
         public async Task<IActionResult> ApproveRequest(Guid id)
         {
-            var req = await _db.StudentRequests.FindAsync(id);
+            var req = await _db.StudentRequests
+                .Include(r => r.CourseSession)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
             if (req == null) return NotFound();
 
             req.Status = "Approved";
-            await _db.SaveChangesAsync();
 
-            return Ok();
+            if (req.Type == "view")
+            {
+                var progress = await _db.LessonProgress
+                    .FirstOrDefaultAsync(lp =>
+                        lp.StudentId == req.StudentId &&
+                        lp.CourseSessionId == req.LessonId);
+
+                if (progress != null)
+                    progress.MaxViews += 1;
+                else
+                    req.CourseSession.MaxViews += 1;
+            }
+
+            if (req.Type == "test")
+            {
+                var lastAttempt = await _db.LessonAttempts
+                    .Where(la =>
+                        la.StudentId == req.StudentId &&
+                        la.CourseSessionId == req.LessonId)
+                    .OrderByDescending(la => la.TakenAt)
+                    .FirstOrDefaultAsync();
+
+                if (lastAttempt != null)
+                    lastAttempt.TakenAt = DateTime.UtcNow.AddHours(-999);
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok(new { message = "Request approved." });
         }
+
 
         [HttpPost("request/{id}/deny")]
         public async Task<IActionResult> DenyRequest(Guid id)
@@ -216,7 +249,6 @@ namespace grad.Controllers
 
 
         // SUBJECTS (COURSES)
-      
 
         [HttpGet("subjects")]
         public async Task<IActionResult> GetSubjects()
@@ -522,14 +554,12 @@ namespace grad.Controllers
                 await _db.SaveChangesAsync();
             }
 
+            // NOTE: removed the unreachable duplicate "return Ok(courseSession);" that followed this
             return Ok(new
             {
                 message = "Lesson created successfully",
                 lessonId = courseSession.Id
             });
-
-            return Ok(courseSession);
-
         }
 
         [HttpPut("lessons/{lessonId}")]
@@ -726,7 +756,7 @@ namespace grad.Controllers
 
             var lessonIds = lessons.Select(x => x.Id).ToList();
 
-         
+
             var progress = await _db.LessonProgress
                 .Where(p =>
                     p.StudentId == studentId &&
@@ -738,6 +768,7 @@ namespace grad.Controllers
                 .Include(q => q.Quiz)
                 .Where(q =>
                     q.StudentId == studentId &&
+                    q.Quiz != null &&
                     courseIds.Contains(q.Quiz.CourseSession.CourseId))
                 .ToListAsync();
 
@@ -799,7 +830,7 @@ namespace grad.Controllers
                 StudentName =
                     $"{student.User.firstname} {student.User.lastname}",
 
-             
+
 
                 Grade = grade,
 
@@ -825,11 +856,15 @@ namespace grad.Controllers
                 .ToListAsync();
 
             var studentIds = await _db.Enrollments
-
                 .Where(e => courseIds.Contains(e.CourseId))
-
                 .Select(e => e.StudentId)
                 .Distinct()
+                .ToListAsync();
+
+            // Only this teacher's lessons should count
+            var teacherLessonIds = await _db.CourseSessions
+                .Where(cs => courseIds.Contains(cs.CourseId))
+                .Select(cs => cs.Id)
                 .ToListAsync();
 
             var students = await _db.Students
@@ -838,11 +873,15 @@ namespace grad.Controllers
                 .ToListAsync();
 
             var progresses = await _db.LessonProgress
-                .Where(lp => studentIds.Contains(lp.StudentId))
+                .Where(lp => studentIds.Contains(lp.StudentId)
+                    && teacherLessonIds.Contains(lp.CourseSessionId))
                 .ToListAsync();
 
             var quizScores = await _db.StudentQuizResults
-                .Where(q => studentIds.Contains(q.StudentId))
+                .Include(q => q.Quiz)
+                .Where(q => studentIds.Contains(q.StudentId)
+                    && q.Quiz != null
+                    && teacherLessonIds.Contains(q.Quiz.CourseSessionId))
                 .ToListAsync();
 
             var enrollments = await _db.Enrollments
@@ -927,8 +966,12 @@ namespace grad.Controllers
             {
                 if (student.User == null) continue;
 
+                // Scoped to this teacher's courses only
                 var entryTest = await _db.StudentQuizResults
-                    .Where(q => q.StudentId == student.student_id)
+                    .Include(q => q.Quiz)
+                    .Where(q => q.StudentId == student.student_id
+                        && q.Quiz != null
+                        && courseIds.Contains(q.Quiz.CourseSession.CourseId))
                     .Select(q => (double?)q.Percentage)
                     .AverageAsync() ?? 0;
 
@@ -944,7 +987,7 @@ namespace grad.Controllers
         }
 
         // LESSON STATS
-     
+
         [HttpGet("lessons/{lessonId}/stats")]
         public async Task<IActionResult> LessonStats(int lessonId)
         {
@@ -965,17 +1008,22 @@ namespace grad.Controllers
 
             var studentIds = progress.Select(p => p.StudentId).Distinct();
 
-            var users = await _db.Users
-                .Where(u => studentIds.Contains(u.Id))
+            var students = await _db.Students
+                .Include(s => s.User)
+                .Where(s => studentIds.Contains(s.student_id))
                 .ToListAsync();
 
+            // Fixed: scoped to THIS lesson's quiz only, not the student's most recent quiz from any lesson
             var quizResults = await _db.StudentQuizResults
-                .Where(q => studentIds.Contains(q.StudentId))
+                .Include(q => q.Quiz)
+                .Where(q => studentIds.Contains(q.StudentId)
+                    && q.Quiz != null
+                    && q.Quiz.CourseSessionId == lessonId)
                 .ToListAsync();
 
             var result = progress.Select(p =>
             {
-                var user = users.FirstOrDefault(u => u.Id == p.StudentId);
+                var student = students.FirstOrDefault(s => s.student_id == p.StudentId);
 
                 var quiz = quizResults
                     .Where(q => q.StudentId == p.StudentId)
@@ -985,19 +1033,21 @@ namespace grad.Controllers
                 return new
                 {
                     StudentId = p.StudentId,
-                    StudentName = user != null ? $"{user.firstname} {user.lastname}" : "",
+                    StudentName = student?.User != null
+                        ? $"{student.User.firstname} {student.User.lastname}"
+                        : "",
 
                     Views = $"{p.Views}/{lesson.MaxViews}",
                     Progress = p.ProgressPercent,
                     LastWatched = p.LastWatched,
 
                     EntryTest = quiz == null
-    ? new { Status = "Pending", Score = (decimal?)null }
-    : new
-    {
-        Status = quiz.Passed ? "Passed" : "Failed",
-        Score = (decimal?)quiz.Percentage
-    }
+                        ? new { Status = "Pending", Score = (decimal?)null }
+                        : new
+                        {
+                            Status = quiz.Passed ? "Passed" : "Failed",
+                            Score = (decimal?)quiz.Percentage
+                        }
                 };
             });
 
@@ -1024,6 +1074,5 @@ namespace grad.Controllers
         }
 
 
- 
     }
 }
