@@ -294,7 +294,14 @@ public class AdminController : ControllerBase
                 firstname = m.User.firstname,
                 lastname = m.User.lastname,
                 email = m.User.Email,
-                students_managed = m.students_managed,
+                students_managed = _db.Enrollments
+                 .Where(e =>
+                             m.AssignedTeachers
+                                .Select(at => at.teacher_user_id)
+                                .Contains(e.Course.Teacher.user_id))
+                 .Select(e => e.StudentId)
+                 .Distinct()
+                 .Count(),
                 last_active = m.last_active,
                 assigned_teacher_ids = m.AssignedTeachers.Select(at => at.teacher_user_id).ToList(),
                 admin_name = m.Admin.firstname + " " + m.Admin.lastname
