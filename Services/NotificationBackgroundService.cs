@@ -1,5 +1,7 @@
 using grad.Data;
+using grad.Hubs;
 using grad.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace grad.Services
@@ -14,13 +16,16 @@ namespace grad.Services
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<NotificationBackgroundService> _logger;
+        private readonly IHubContext<NotificationHub> _hub;
 
         public NotificationBackgroundService(
             IServiceScopeFactory scopeFactory,
-            ILogger<NotificationBackgroundService> logger)
+            ILogger<NotificationBackgroundService> logger,
+            IHubContext<NotificationHub> hub)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _hub = hub;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -42,23 +47,51 @@ namespace grad.Services
             }
         }
 
-        
+
         private async Task RunChecksAsync(CancellationToken ct)
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
             var now = DateTime.UtcNow;
+            var pending = new List<Notification>();
 
-            await CheckDeadlinesAsync(db, now, ct);
-            await CheckLowViewsAsync(db, ct);
-            await CheckNewContentAsync(db, now, ct);
+            await CheckDeadlinesAsync(db, now, pending, ct);
+            await CheckLowViewsAsync(db, pending, ct);
+            await CheckNewContentAsync(db, now, pending, ct);
 
             await db.SaveChangesAsync(ct);
+
+            // Push every newly-created notification to the student in real-time via SignalR
+            foreach (var notification in pending)
+            {
+                await PushRealtimeAsync(notification);
+            }
         }
 
-   
-        private async Task CheckDeadlinesAsync(AppDbContext db, DateTime now, CancellationToken ct)
+        private async Task PushRealtimeAsync(Notification notification)
+        {
+            try
+            {
+                await _hub.Clients
+                    .Group($"user-{notification.UserId}")
+                    .SendAsync("ReceiveNotification", new
+                    {
+                        title = notification.Title,
+                        body = notification.Body,
+                        type = notification.Type,
+                        createdAt = notification.CreatedAt
+                    });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to push real-time notification to user {U}.", notification.UserId);
+            }
+        }
+
+
+        private async Task CheckDeadlinesAsync(AppDbContext db, DateTime now, List<Notification> pending, CancellationToken ct)
         {
             var windowEnd = now.AddHours(DeadlineWarningHours);
             var todayStart = DateTime.SpecifyKind(now.Date, DateTimeKind.Utc);
@@ -114,7 +147,7 @@ namespace grad.Services
                     var taskLabel = hasQuiz ? "quiz" : "homework";
                     var hoursLeft = (int)(dueDate - now).TotalHours;
 
-                    db.Notifications.Add(new Notification
+                    var notification = new Notification
                     {
                         UserId = enrollment.Student.user_id,
                         Title = $"⏰ {taskLabel.ToUpper()} due in {hoursLeft}h",
@@ -123,7 +156,10 @@ namespace grad.Services
                         Type = "deadline",
                         IsRead = false,
                         CreatedAt = DateTime.UtcNow
-                    });
+                    };
+
+                    db.Notifications.Add(notification);
+                    pending.Add(notification);
 
                     _logger.LogInformation(
                         "Deadline notification queued → student {S}, session \"{Sess}\"",
@@ -132,7 +168,7 @@ namespace grad.Services
             }
         }
 
-        private async Task CheckLowViewsAsync(AppDbContext db, CancellationToken ct)
+        private async Task CheckLowViewsAsync(AppDbContext db, List<Notification> pending, CancellationToken ct)
         {
             var atRiskProgress = await db.LessonProgress
                 .Include(lp => lp.CourseSession)
@@ -157,7 +193,7 @@ namespace grad.Services
                 int remaining = lp.MaxViews - lp.Views;
                 int usedPercent = (int)((double)lp.Views / lp.MaxViews * 100);
 
-                db.Notifications.Add(new Notification
+                var notification = new Notification
                 {
                     UserId = student.user_id,
                     Title = $"⚠️ Low views remaining for \"{lp.CourseSession.Title}\"",
@@ -166,7 +202,10 @@ namespace grad.Services
                     Type = "low_views",
                     IsRead = false,
                     CreatedAt = DateTime.UtcNow
-                });
+                };
+
+                db.Notifications.Add(notification);
+                pending.Add(notification);
 
                 _logger.LogInformation(
                     "Low-views notification queued → student {S}, session \"{Sess}\" ({P}%)",
@@ -175,7 +214,7 @@ namespace grad.Services
         }
 
 
-        private async Task CheckNewContentAsync(AppDbContext db, DateTime now, CancellationToken ct)
+        private async Task CheckNewContentAsync(AppDbContext db, DateTime now, List<Notification> pending, CancellationToken ct)
         {
             var allSessions = await db.CourseSessions
                 .Include(cs => cs.Course)
@@ -201,7 +240,7 @@ namespace grad.Services
 
                     if (alreadyNotified) continue;
 
-                    db.Notifications.Add(new Notification
+                    var notification = new Notification
                     {
                         UserId = student.user_id,
                         Title = $"📚 New session in \"{session.Course.Title}\"",
@@ -209,13 +248,16 @@ namespace grad.Services
                         Type = "new_content",
                         IsRead = false,
                         CreatedAt = DateTime.UtcNow
-                    });
+                    };
+
+                    db.Notifications.Add(notification);
+                    pending.Add(notification);
 
                     _logger.LogInformation(
                          "New-content notification queued → student {S}, session \"{Sess}\"",
                          student.student_id, session.Title);
-                } 
-            } 
-        } 
-    } 
-} 
+                }
+            }
+        }
+    }
+}
