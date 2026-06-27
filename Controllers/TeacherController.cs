@@ -709,6 +709,11 @@ namespace grad.Controllers
             _db.Quizzes.Add(quiz);
             await _db.SaveChangesAsync();
 
+            // ── Fix: mark the session so the mobile app can discover this quiz ──
+            courseSession.HasEntryTest = true;
+            courseSession.EntryTestId = quiz.Id;
+            await _db.SaveChangesAsync();
+
             return Ok(new
             {
                 quiz.Id,
