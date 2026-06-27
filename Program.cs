@@ -1,5 +1,6 @@
 ﻿using grad.Data;
 using grad.Helpers;
+using grad.Hubs;
 using grad.Interfaces;
 using grad.Infrastructure.Interceptors;
 using grad.Models;
@@ -41,13 +42,19 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 1024 * 1024 * 1024;
 });
 
+// ── SignalR ──────────────────────────────────────────────────────────────────
+builder.Services.AddSignalR();
+// ─────────────────────────────────────────────────────────────────────────────
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        // AllowCredentials() is required for SignalR; can't use AllowAnyOrigin with it
+        policy.SetIsOriginAllowed(_ => true)
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -80,6 +87,19 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    // ── SignalR: read JWT from query string for WebSocket connections ─────────
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                context.Token = accessToken;
+            return Task.CompletedTask;
+        }
+    };
+    // ─────────────────────────────────────────────────────────────────────────
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
@@ -107,29 +127,28 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>
 {
-c.SwaggerDoc("v1", new OpenApiInfo { Title = "Learning Platform API", Version = "v1" });
-c.SwaggerDoc("students", new OpenApiInfo { Title = "Student API", Version = "v1" });
-c.SwaggerDoc("teachers", new OpenApiInfo { Title = "Teacher API", Version = "v1" });
-c.SwaggerDoc("admin", new OpenApiInfo { Title = "Admin API", Version = "v1" });
-c.SwaggerDoc("moderator", new OpenApiInfo { Title = "Moderator API", Version = "v1" });
+    c.SwaggerDoc("v1",        new OpenApiInfo { Title = "Learning Platform API", Version = "v1" });
+    c.SwaggerDoc("students",  new OpenApiInfo { Title = "Student API",           Version = "v1" });
+    c.SwaggerDoc("teachers",  new OpenApiInfo { Title = "Teacher API",           Version = "v1" });
+    c.SwaggerDoc("admin",     new OpenApiInfo { Title = "Admin API",             Version = "v1" });
+    c.SwaggerDoc("moderator", new OpenApiInfo { Title = "Moderator API",         Version = "v1" });
 
-var scheme = new OpenApiSecurityScheme
-{
-    Name = "Authorization",
-    Description = "Enter: Bearer {token}",
-    In = ParameterLocation.Header,
-    Type = SecuritySchemeType.Http,
-    Scheme = "bearer",
-    BearerFormat = "JWT",
-    Reference = new OpenApiReference
+    var scheme = new OpenApiSecurityScheme
     {
-        Type = ReferenceType.SecurityScheme,
-        Id = JwtBearerDefaults.AuthenticationScheme
-    }
-};
+        Name = "Authorization",
+        Description = "Enter: Bearer {token}",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Reference = new OpenApiReference
+        {
+            Type = ReferenceType.SecurityScheme,
+            Id = JwtBearerDefaults.AuthenticationScheme
+        }
+    };
 
     c.AddSecurityDefinition(scheme.Reference.Id, scheme);
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         { scheme, Array.Empty<string>() }
@@ -138,12 +157,10 @@ var scheme = new OpenApiSecurityScheme
     c.DocInclusionPredicate((doc, desc) =>
     {
         var path = desc.RelativePath?.ToLower() ?? "";
-
-        if (doc == "students") return path.Contains("student");
-        if (doc == "teachers") return path.Contains("teacher");
-        if (doc == "admin") return path.Contains("admin");
+        if (doc == "students")  return path.Contains("student");
+        if (doc == "teachers")  return path.Contains("teacher");
+        if (doc == "admin")     return path.Contains("admin");
         if (doc == "moderator") return path.Contains("moderator");
-
         return doc == "v1";
     });
 });
@@ -159,22 +176,18 @@ using (var scope = app.Services.CreateScope())
     try
     {
         logger.LogInformation("Applying database migrations...");
-
         var context = services.GetRequiredService<AppDbContext>();
         context.Database.Migrate();
 
         logger.LogInformation("Seeding roles and admin user...");
-
         await SeedData.SeedRolesAsync(services);
         await SeedData.SeedAdminAsync(services);
 
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-
         string adminEmail = "m314227@gmail.com";
         string adminPassword = "Admin@123";
 
         var adminUser = await userManager.FindByEmailAsync(adminEmail);
-
         if (adminUser == null)
         {
             adminUser = new ApplicationUser
@@ -189,7 +202,6 @@ using (var scope = app.Services.CreateScope())
 
             await userManager.CreateAsync(adminUser, adminPassword);
             await userManager.AddToRoleAsync(adminUser, "Admin");
-
             logger.LogInformation("Admin user created");
         }
     }
@@ -206,26 +218,24 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Learning Platform API");
-        c.SwaggerEndpoint("/swagger/students/swagger.json", "Students");
-        c.SwaggerEndpoint("/swagger/teachers/swagger.json", "Teachers");
-        c.SwaggerEndpoint("/swagger/admin/swagger.json", "Admin");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json",        "Learning Platform API");
+        c.SwaggerEndpoint("/swagger/students/swagger.json",  "Students");
+        c.SwaggerEndpoint("/swagger/teachers/swagger.json",  "Teachers");
+        c.SwaggerEndpoint("/swagger/admin/swagger.json",     "Admin");
         c.SwaggerEndpoint("/swagger/moderator/swagger.json", "Moderator");
     });
 }
 
 app.UseHttpsRedirection();
-
-app.UseStaticFiles(); // wwwroot
-
-
+app.UseStaticFiles();
 app.UseRouting();
-
 app.UseCors("AllowAll");
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
+
+// ── SignalR hub endpoint ──────────────────────────────────────────────────────
+app.MapHub<NotificationHub>("/hubs/notifications");
+// ─────────────────────────────────────────────────────────────────────────────
 
 app.Run();
