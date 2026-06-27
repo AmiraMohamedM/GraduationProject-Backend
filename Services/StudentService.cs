@@ -1,12 +1,14 @@
 using grad.Data;
 using grad.DTOs;
 using grad.Models;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text;
 using grad.Services;
 using Microsoft.AspNetCore.Http;
+
 
 namespace grad.Services
 {
@@ -16,7 +18,8 @@ namespace grad.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<StudentService> _logger;
         private readonly ActivityLogger _activityLogger;
-        private readonly IHttpContextAccessor _httpContextAccessor; 
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IDataProtector _protector;
 
         private const string UpperChars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
         private const string LowerChars = "abcdefghjkmnpqrstuvwxyz";
@@ -28,15 +31,16 @@ namespace grad.Services
             UserManager<ApplicationUser> userManager,
             ILogger<StudentService> logger,
             ActivityLogger activityLogger,
-            IHttpContextAccessor httpContextAccessor) 
+            IHttpContextAccessor httpContextAccessor,
+            IDataProtectionProvider dataProtectionProvider)
         {
             _db = db;
             _userManager = userManager;
             _logger = logger;
             _activityLogger = activityLogger;
             _httpContextAccessor = httpContextAccessor;
+            _protector = dataProtectionProvider.CreateProtector("grad.StudentCredentials.v1");
         }
-
         public async Task<StudentCredentialsResponseDto> CreateStudentAsync(CreateStudentRequestDto dto)
         {
             var moderatorIdStr = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -90,7 +94,9 @@ namespace grad.Services
                 user_id = user.Id,
                 AcademicLevel = dto.AcademicLevel,
                 AcademicYear = dto.AcademicYear,
-                ParentPhoneNumber = dto.ParentPhoneNumber ?? string.Empty
+                ParentPhoneNumber = dto.ParentPhoneNumber ?? string.Empty,
+                EncryptedPassword = _protector.Protect(password)
+
             };
 
             _db.Students.Add(student);
@@ -146,7 +152,49 @@ namespace grad.Services
                 AssignedTeacherNames = assignedTeacherNames
             };
         }
+        public async Task<StudentCredentialsResponseDto?> GetStudentCredentialsAsync(Guid studentId)
+        {
+            var student = await _db.Students
+                .Include(s => s.User)
+                .Include(s => s.AssignedTeachers).ThenInclude(st => st.Teacher).ThenInclude(t => t.User)
+                .FirstOrDefaultAsync(s => s.student_id == studentId);
 
+            if (student is null) return null;
+
+            string? plainPassword = null;
+            if (!string.IsNullOrEmpty(student.EncryptedPassword))
+            {
+                try
+                {
+                    plainPassword = _protector.Unprotect(student.EncryptedPassword);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to decrypt stored password for student {S}", studentId);
+                }
+            }
+
+            return new StudentCredentialsResponseDto
+            {
+                StudentId = student.student_id,
+                Username = student.User.UserName!,
+                Password = plainPassword ?? "(unavailable — please reset the password)",
+                FullName = $"{student.User.firstname} {student.User.lastname}",
+                Email = student.User.Email!,
+                AssignedTeacherNames = student.AssignedTeachers
+                    .Select(st => $"{st.Teacher.User.firstname} {st.Teacher.User.lastname}")
+                    .ToList()
+            };
+        }
+
+        public async Task UpdateStoredPasswordAsync(Guid studentId, string newPlainPassword)
+        {
+            var student = await _db.Students.FindAsync(studentId)
+                ?? throw new KeyNotFoundException($"Student {studentId} not found.");
+
+            student.EncryptedPassword = _protector.Protect(newPlainPassword);
+            await _db.SaveChangesAsync();
+        }
         public async Task AssignTeachersAsync(Guid studentId, List<Guid> teacherIds)
         {
             var student = await _db.Students.FindAsync(studentId)

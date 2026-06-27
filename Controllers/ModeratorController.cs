@@ -551,7 +551,27 @@ namespace grad.Controllers
 
             if (!result.Succeeded) return BadRequest(result.Errors);
 
+            await _studentService.UpdateStoredPasswordAsync(studentId, dto.NewPassword);
+
             return Ok(new { message = "Password reset successfully." });
+        }
+
+        [HttpGet("students/{studentId:guid}/credentials")]
+        public async Task<IActionResult> GetStudentCredentials(Guid studentId)
+        {
+            var moderatorId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var belongsToModerator = await _db.Enrollments.AnyAsync(e =>
+                e.StudentId == studentId &&
+                e.Course.Teacher.ModeratorId == moderatorId);
+
+            if (!belongsToModerator) return NotFound(new { message = "Student not found." });
+
+            var credentials = await _studentService.GetStudentCredentialsAsync(studentId);
+            if (credentials is null) return NotFound(new { message = "Student not found." });
+
+            return Ok(credentials);
+        
         }
 
         // ENROLL STUDENT IN COURSE

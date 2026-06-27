@@ -18,6 +18,8 @@ namespace grad.Models
         public string? ProfileImagePublicId { get; set; }
         public string AcademicLevel { get; set; } = string.Empty;
         public int AcademicYear { get; set; }
+        public string? EncryptedPassword { get; set; }
+
         public ApplicationUser User { get; set; } = null!;
 
         public ICollection<StudentTeacher> AssignedTeachers { get; set; } = new List<StudentTeacher>();
