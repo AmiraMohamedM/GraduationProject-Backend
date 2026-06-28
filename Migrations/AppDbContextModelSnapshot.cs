@@ -183,7 +183,7 @@ namespace grad.Migrations
                     b.HasIndex("CourseSessionId")
                         .IsUnique();
 
-                    b.ToTable("Quizzes");
+                    b.ToTable("Quizzes", (string)null);
                 });
 
             modelBuilder.Entity("Teacher", b =>
@@ -233,7 +233,7 @@ namespace grad.Migrations
 
                     b.HasKey("id");
 
-                    b.ToTable("AcademicLevels");
+                    b.ToTable("AcademicLevels", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.ActivityLogs", b =>
@@ -282,9 +282,6 @@ namespace grad.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("CurrentSessionId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -398,7 +395,7 @@ namespace grad.Migrations
 
                     b.HasIndex("AcademicLevelid");
 
-                    b.ToTable("ClassLevels");
+                    b.ToTable("ClassLevels", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.Course", b =>
@@ -433,7 +430,7 @@ namespace grad.Migrations
 
                     b.HasIndex("TeacherId");
 
-                    b.ToTable("Courses");
+                    b.ToTable("Courses", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.CourseSession", b =>
@@ -482,7 +479,7 @@ namespace grad.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("CourseSessions");
+                    b.ToTable("CourseSessions", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.Enrollment", b =>
@@ -515,7 +512,7 @@ namespace grad.Migrations
                     b.HasIndex("StudentId", "CourseId")
                         .IsUnique();
 
-                    b.ToTable("Enrollments");
+                    b.ToTable("Enrollments", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.Event", b =>
@@ -539,7 +536,7 @@ namespace grad.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Events");
+                    b.ToTable("Events", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.HomeworkSubmission", b =>
@@ -585,7 +582,7 @@ namespace grad.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("HomeworkSubmissions");
+                    b.ToTable("HomeworkSubmissions", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.LessonAttempt", b =>
@@ -646,7 +643,7 @@ namespace grad.Migrations
 
                     b.HasIndex("CourseSessionId");
 
-                    b.ToTable("LessonFiles");
+                    b.ToTable("LessonFiles", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.LessonProgress", b =>
@@ -715,7 +712,7 @@ namespace grad.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("Message");
+                    b.ToTable("Message", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.Moderator", b =>
@@ -799,7 +796,7 @@ namespace grad.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notifications");
+                    b.ToTable("Notifications", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.Photo", b =>
@@ -824,7 +821,7 @@ namespace grad.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Photos");
+                    b.ToTable("Photos", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.Question", b =>
@@ -846,7 +843,7 @@ namespace grad.Migrations
 
                     b.HasIndex("QuizId");
 
-                    b.ToTable("Questions");
+                    b.ToTable("Questions", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.QuestionOption", b =>
@@ -871,7 +868,7 @@ namespace grad.Migrations
 
                     b.HasIndex("QuestionId");
 
-                    b.ToTable("QuestionOptions");
+                    b.ToTable("QuestionOptions", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.Student", b =>
@@ -978,7 +975,7 @@ namespace grad.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("StudentQuizResults");
+                    b.ToTable("StudentQuizResults", (string)null);
                 });
 
             modelBuilder.Entity("grad.Models.StudentRequests", b =>
@@ -1128,7 +1125,7 @@ namespace grad.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("UserStatistics");
+                    b.ToTable("UserStatistics", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

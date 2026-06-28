@@ -120,21 +120,6 @@ public class StudentAuthController : ControllerBase
 
         return Ok(new { message = "Password reset link sent if email exists." });
     }
-    [HttpPost("logout")]
-    [Authorize]
-    public async Task<IActionResult> Logout()
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user is null) return NotFound();
-
-        user.CurrentSessionId = null;
-        await _userManager.UpdateAsync(user);
-
-        return Ok(new { message = "Logged out successfully." });
-    }
 
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest req)

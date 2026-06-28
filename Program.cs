@@ -100,45 +100,6 @@ builder.Services.AddAuthentication(options =>
             if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
                 context.Token = accessToken;
             return Task.CompletedTask;
-        },
-
-        OnTokenValidated = async context =>
-        {
-            var principal = context.Principal;
-            if (principal is null || !principal.IsInRole("Student"))
-                return; // غير الطالب مش متأثرين بالفحص ده
-
-            var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
-            var sid = principal.FindFirstValue("sid");
-
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(sid))
-            {
-                context.Fail("Invalid session.");
-                return;
-            }
-
-            var userManager = context.HttpContext.RequestServices
-                .GetRequiredService<UserManager<ApplicationUser>>();
-
-            var user = await userManager.FindByIdAsync(userId);
-
-            if (user is null || user.CurrentSessionId is null ||
-                user.CurrentSessionId.ToString() != sid)
-            {
-                context.Fail("session_revoked");
-            }
-        },
-
-        OnChallenge = async context =>
-        {
-            if (context.AuthenticateFailure?.Message == "session_revoked")
-            {
-                context.HandleResponse();
-                context.Response.StatusCode = 401;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync(
-                    "{\"error\":\"session_revoked\",\"message\":\"This account was used to log in on another device.\"}");
-            }
         }
     };
     // ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
