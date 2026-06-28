@@ -23,12 +23,18 @@ public class TokenService : ITokenService
 
         var roles = await _userManager.GetRolesAsync(user);
 
+        var sessionId = Guid.NewGuid();
+        user.CurrentSessionId = sessionId;
+        await _userManager.UpdateAsync(user);
+
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, $"{user.firstname} {user.lastname}")
+            new Claim(ClaimTypes.Name, $"{user.firstname} {user.lastname}"),
+            new Claim("sid", sessionId.ToString())
+
         };
 
         foreach (var role in roles)

@@ -29,6 +29,8 @@ namespace grad.Models
         public string? Plan { get; set; }
         public DateTime? PlanExpiresAt { get; set; }
 
+        public Guid? CurrentSessionId { get; set; }
+
 
 
     }
