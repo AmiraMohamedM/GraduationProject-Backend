@@ -13,6 +13,8 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.Security.Claims;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -88,6 +90,7 @@ builder.Services.AddAuthentication(options =>
 .AddJwtBearer(options =>
 {
     // ── SignalR: read JWT from query string for WebSocket connections ─────────
+    // ── SignalR: read JWT from query string for WebSocket connections ─────────
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -99,7 +102,7 @@ builder.Services.AddAuthentication(options =>
             return Task.CompletedTask;
         }
     };
-    // ─────────────────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     options.RequireHttpsMetadata = false;
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
