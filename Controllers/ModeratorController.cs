@@ -1,14 +1,15 @@
+using CloudinaryDotNet.Actions;
 using grad.Data;
 using grad.DTOs;
+using grad.Hubs;
 using grad.Models;
 using grad.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using grad.Hubs;
 
 namespace grad.Controllers
 {
@@ -377,7 +378,39 @@ namespace grad.Controllers
 
             try
             {
+                var moderatorUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
                 var credentials = await _studentService.CreateStudentAsync(dto);
+
+                // ── look up the new student's user_id from their student_id ──────
+                var newStudentUserId = await _db.Students
+                    .Where(s => s.student_id == credentials.StudentId)
+                    .Select(s => s.user_id)
+                    .FirstOrDefaultAsync();
+
+                if (newStudentUserId != Guid.Empty)
+                {
+                    var moderatorName = await _db.Users
+                        .Where(u => u.Id == moderatorUserId)
+                        .Select(u => u.FullName)
+                        .FirstOrDefaultAsync() ?? "your moderator";
+
+                    var welcomeMessage = new Message
+                    {
+                        SenderId = moderatorUserId,
+                        ReceiverId = newStudentUserId,
+                        Content = $"👋 Welcome to EduCore, {dto.FirstName}! " +
+                                     $"Your account has been created successfully. " +
+                                     $"Feel free to message me anytime if you have any questions.",
+                        SentAt = DateTime.UtcNow,
+                        IsRead = false
+                    };
+
+                    _db.Messages.Add(welcomeMessage);
+                    await _db.SaveChangesAsync();
+                }
+                // ─────────────────────────────────────────────────────────────────
+
                 return Ok(credentials);
             }
             catch (InvalidOperationException ex)
@@ -674,6 +707,15 @@ namespace grad.Controllers
             var student = await _db.Students.FindAsync(studentId);
             if (student is null) return NotFound(new { message = "Student not found." });
 
+            // ── fetch moderator name ──────────────────────────────────────────────
+            var moderatorUser = await _db.Users
+                .Where(u => u.Id == moderatorId)
+                .Select(u => new { u.FullName })
+                .FirstOrDefaultAsync();
+
+            var moderatorName = moderatorUser?.FullName ?? "your moderator";
+            // ─────────────────────────────────────────────────────────────────────
+
             _db.Notifications.Add(new Notification
             {
                 UserId = student.user_id,
@@ -684,16 +726,19 @@ namespace grad.Controllers
 
             await _db.SaveChangesAsync();
 
-            // Push real-time notification via SignalR to the student's browser
-            await _hub.Clients.Group($"user-{student.user_id}").SendAsync("ReceiveNotification", new
-            {
-                title = dto.Title,
-                body  = dto.Body,
-                type  = dto.Type ?? "general",
-                createdAt = DateTime.UtcNow
-            });
+            // ── single SignalR push ───────────────────────────────────────────────
+            await _hub.Clients
+                .Group($"user-{student.user_id}")
+                .SendAsync("ReceiveNotification", new
+                {
+                    title = dto.Title,
+                    body = $"{dto.Body} — from {moderatorName}",
+                    type = dto.Type ?? "general",
+                    createdAt = DateTime.UtcNow
+                });
+            // ─────────────────────────────────────────────────────────────────────
 
-            return Ok(new { message = "Notification sent." });
+            return Ok(new { message = $"Notification sent from {moderatorName}." });
         }
 
         // ALL STUDENTS STATS

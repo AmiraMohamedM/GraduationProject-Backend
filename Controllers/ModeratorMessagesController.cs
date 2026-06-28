@@ -84,10 +84,8 @@ namespace grad.Controllers
         public async Task<IActionResult> GetThread(Guid studentId)
         {
             var moderatorUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-            var isMyStudent = await _db.StudentTeachers.AnyAsync(st =>
-                st.Student.user_id == studentId &&
-                st.Teacher.ModeratorId == moderatorUserId);
+            var isMyStudent = await _db.Students.AnyAsync(s => s.user_id == studentId);
+            if (!isMyStudent) return NotFound();
 
             if (!isMyStudent) return Forbid();
 
@@ -131,9 +129,10 @@ namespace grad.Controllers
 
             var moderatorUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-            var isMyStudent = await _db.StudentTeachers.AnyAsync(st =>
-                st.Student.user_id == studentId &&
-                st.Teacher.ModeratorId == moderatorUserId);
+            var isMyStudent = await _db.Students.AnyAsync(s => s.user_id == studentId);
+            if (!isMyStudent) return NotFound();
+
+            if (!isMyStudent) return Forbid();
 
             if (!isMyStudent) return Forbid();
 
@@ -166,6 +165,18 @@ namespace grad.Controllers
                 TimeAgo = "Just now",
                 IsRead = false
             });
+        }
+        [HttpGet("unread-count")]
+        public async Task<IActionResult> GetUnreadCount()
+        {
+            var moderatorUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var unreadCount = await _db.Messages
+                .CountAsync(m =>
+                    m.ReceiverId == moderatorUserId &&
+                    !m.IsRead);
+
+            return Ok(new { unreadCount });
         }
 
         private static string BuildTimeAgo(DateTime utcTime)

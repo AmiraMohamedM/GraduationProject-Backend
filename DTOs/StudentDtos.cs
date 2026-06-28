@@ -104,6 +104,7 @@ namespace grad.DTOs
         public decimal? LastScore { get; set; }
         public DateTime? CanRetakeAt { get; set; }
         public IEnumerable<QuizQuestionDto> Questions { get; set; } = new List<QuizQuestionDto>();
+        public List<QuizBreakdownItemDto>? LastBreakdown { get; set; }
     }
 
     public class QuizQuestionDto

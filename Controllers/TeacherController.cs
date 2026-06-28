@@ -178,16 +178,17 @@ namespace grad.Controllers
             var requests = await _db.StudentRequests
                 .Include(r => r.Student).ThenInclude(s => s.User)
                 .Include(r => r.CourseSession)
-                .Where(r => r.Status == "Pending"
-                    && r.CourseSession.Course.TeacherId == teacher.teacher_id)
+                .Where(r => r.CourseSession.Course.TeacherId == teacher.teacher_id) // ← removed Status == "Pending"
                 .Select(r => new
                 {
+                    id = r.Id,
                     student = r.Student.User.firstname + " " + r.Student.User.lastname,
                     lesson = r.CourseSession.Title,
                     count = r.CurrentCount,
                     reason = r.Reason,
                     date = r.CreatedAt,
-                    type = r.Type
+                    type = r.Type,
+                    status = r.Status  // ← now returned so Flutter can read it
                 })
                 .ToListAsync();
 
@@ -409,6 +410,13 @@ namespace grad.Controllers
 
             if (subject == null) return NotFound();
 
+            // ── NEW: fetch all LessonProgress rows for this course in one query ──
+            var sessionIds = subject.CourseSessions.Select(l => l.Id).ToList();
+
+            var allProgress = await _db.LessonProgress
+                .Where(lp => sessionIds.Contains(lp.CourseSessionId))
+                .ToListAsync();
+
             return Ok(new
             {
                 subject.Id,
@@ -417,33 +425,52 @@ namespace grad.Controllers
                 subject.AcademicYear,
                 subject.Introduction,
                 subject.PictureUrl,
-                Sessions = subject.CourseSessions.Select(l => new
+                Sessions = subject.CourseSessions.Select(l =>
                 {
-                    l.Id,
-                    l.Title,
+                    // ── NEW: aggregate per-session ──
+                    var sessionProgress = allProgress
+                        .Where(lp => lp.CourseSessionId == l.Id)
+                        .ToList();
 
-                    Files = l.Files.Select(f => new
-                    {
-                        f.Id,
-                        f.FileName,
-                        f.FileType,
-                        f.FileSize,
-                        f.FileUrl
-                    }),
+                    var avgProgress = sessionProgress.Any()
+                        ? Math.Round(sessionProgress.Average(lp => (double)lp.ProgressPercent), 1)
+                        : 0;
 
-                    l.AvailableDays,
-                    l.MaxViews,
-                    l.HomeworkFileUrl,
-                    l.HomeworkFileName,
-                    l.HomeworkFileType,
-                    l.HomeworkFileSize,
-                    l.HasEntryTest,
-                    EntryTest = l.EntryTest == null ? null : new
+                    var avgViews = sessionProgress.Any()
+                        ? Math.Round(sessionProgress.Average(lp => (double)lp.Views), 1)
+                        : 0;
+
+                    return new
                     {
-                        l.EntryTest.Id,
-                        l.EntryTest.Title,
-                        l.EntryTest.PassingScore
-                    }
+                        l.Id,
+                        l.Title,
+
+                        AvgProgress = avgProgress,   // e.g. 91.0  → display as "91%"
+                        AvgViews = avgViews,       // e.g. 3.2   → display as "3.2 avg"
+
+                        Files = l.Files.Select(f => new
+                        {
+                            f.Id,
+                            f.FileName,
+                            f.FileType,
+                            f.FileSize,
+                            f.FileUrl
+                        }),
+
+                        l.AvailableDays,
+                        l.MaxViews,
+                        l.HomeworkFileUrl,
+                        l.HomeworkFileName,
+                        l.HomeworkFileType,
+                        l.HomeworkFileSize,
+                        l.HasEntryTest,
+                        EntryTest = l.EntryTest == null ? null : new
+                        {
+                            l.EntryTest.Id,
+                            l.EntryTest.Title,
+                            l.EntryTest.PassingScore
+                        }
+                    };
                 })
             });
         }

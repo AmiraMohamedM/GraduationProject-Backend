@@ -452,6 +452,21 @@ namespace grad.Controllers
             return Ok(conversations);
         }
 
+
+        [HttpGet("messages/unread-count")]
+        public async Task<IActionResult> GetUnreadCount()
+        {
+            var userId = GetCurrentUserId();
+
+            var unreadCount = await _db.Messages
+                .CountAsync(m =>
+                    m.ReceiverId == userId &&
+                    !m.IsRead);
+
+            return Ok(new { unreadCount });
+        }
+
+
         [HttpGet("messages/{partnerId:guid}")]
         public async Task<IActionResult> GetMessages(Guid partnerId)
         {
@@ -706,7 +721,7 @@ namespace grad.Controllers
                     s.Id,
                     s.Title,
                     s.HasEntryTest,
-                    s.MaxViews,
+                    MaxViews = progress?.MaxViews ?? s.MaxViews,
                     IsLocked = isLocked,
                     ProgressPercent = progress?.ProgressPercent ?? 0,
                     Views = progress?.Views ?? 0,
@@ -848,7 +863,52 @@ namespace grad.Controllers
                     : lastAttempt.Score;
             }
 
-            // Hide questions once the student has already passed
+            // ── Rebuild the per-question breakdown of the passing attempt ──────
+            // We don't store a breakdown directly — only the raw selected answers
+            // (StudentQuizResult.AnswersJson). Reconstruct it the same way
+            // SubmitQuiz does, using the already-loaded Questions/Options.
+            List<QuizBreakdownItemDto>? lastBreakdown = null;
+            if (alreadyPassed)
+            {
+                var lastResult = await _db.StudentQuizResults
+                    .AsNoTracking()
+                    .Where(r => r.StudentId == student.student_id
+                             && r.QuizId == quiz.Id
+                             && r.Passed)
+                    .OrderByDescending(r => r.SubmittedAt)
+                    .FirstOrDefaultAsync();
+
+                if (lastResult != null && !string.IsNullOrEmpty(lastResult.AnswersJson))
+                {
+                    Dictionary<int, int> savedAnswers;
+                    try
+                    {
+                        savedAnswers = JsonSerializer.Deserialize<Dictionary<int, int>>(lastResult.AnswersJson)
+                            ?? new Dictionary<int, int>();
+                    }
+                    catch
+                    {
+                        savedAnswers = new Dictionary<int, int>();
+                    }
+
+                    lastBreakdown = quiz.Questions?.Select(q =>
+                    {
+                        savedAnswers.TryGetValue(q.Id, out int selectedOptionId);
+                        var correctOpt = q.Options.FirstOrDefault(o => o.IsCorrect);
+                        bool isCorrect = selectedOptionId != 0
+                            && q.Options.Any(o => o.Id == selectedOptionId && o.IsCorrect);
+
+                        return new QuizBreakdownItemDto
+                        {
+                            QuestionId = q.Id,
+                            SelectedOptionId = selectedOptionId == 0 ? null : selectedOptionId,
+                            CorrectOptionId = correctOpt?.Id,
+                            IsCorrect = isCorrect
+                        };
+                    }).ToList();
+                }
+            }
+
             return Ok(new QuizDetailsDto
             {
                 QuizId = quiz.Id,
@@ -858,18 +918,22 @@ namespace grad.Controllers
                 AlreadyPassed = alreadyPassed,
                 LastScore = lastScorePct,
                 CanRetakeAt = canRetakeAt,
-                Questions = alreadyPassed
-                    ? Enumerable.Empty<QuizQuestionDto>()
-                    : quiz.Questions?.Select(q => new QuizQuestionDto
+                // Always return questions+options (text only, no IsCorrect leak) —
+                // the review screen needs them to render. Hiding them only made
+                // sense if the goal was "don't let a passed student see the quiz
+                // again," but they can't resubmit anyway (SubmitQuiz already
+                // blocks that), so there's nothing to protect by hiding it.
+                Questions = quiz.Questions?.Select(q => new QuizQuestionDto
+                {
+                    QuestionId = q.Id,
+                    Text = q.Text,
+                    Options = q.Options.Select(o => new QuizOptionDto
                     {
-                        QuestionId = q.Id,
-                        Text = q.Text,
-                        Options = q.Options.Select(o => new QuizOptionDto
-                        {
-                            OptionId = o.Id,
-                            Text = o.Text
-                        })
-                    }) ?? Enumerable.Empty<QuizQuestionDto>()
+                        OptionId = o.Id,
+                        Text = o.Text
+                    })
+                }) ?? Enumerable.Empty<QuizQuestionDto>(),
+                LastBreakdown = lastBreakdown
             });
         }
 
